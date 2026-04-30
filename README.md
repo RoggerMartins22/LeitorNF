@@ -28,7 +28,7 @@ Sistema web que permite carregar um PDF de nota fiscal, acionar o Google Gemini 
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/SEU_USUARIO/leitor-nf.git
+git clone https://github.com/RoggerMartins22/LeitorNF.git
 cd leitor-nf
 ```
 
