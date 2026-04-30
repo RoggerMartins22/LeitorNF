@@ -1,0 +1,294 @@
+/* ── Layout ─────────────────────────────────── */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────── */
+
+.header {
+  background: linear-gradient(140deg, #183d16 0%, #255c21 55%, #2e7028 100%);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -5%;
+  width: 55%;
+  height: 240%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 22px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.header-icon {
+  width: 46px;
+  height: 46px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-text h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+
+.header-text p {
+  font-size: 0.84rem;
+  color: rgba(255,255,255,0.58);
+  margin-top: 5px;
+  font-weight: 400;
+}
+
+.header-badge {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.82);
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+}
+
+/* ── Main ────────────────────────────────────── */
+
+.main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 36px 32px 48px;
+  width: 100%;
+  flex: 1;
+}
+
+/* ── Upload Card ─────────────────────────────── */
+
+.upload-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  margin-bottom: 20px;
+}
+
+.upload-card-header {
+  margin-bottom: 18px;
+}
+
+.upload-card-title {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.upload-card-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ── Extract Button ──────────────────────────── */
+
+.extract-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 10px rgba(37, 92, 33, 0.35);
+}
+
+.extract-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary-hover), #3a8a34);
+  box-shadow: 0 4px 16px rgba(37, 92, 33, 0.45);
+  transform: translateY(-1px);
+}
+
+.extract-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(37, 92, 33, 0.3);
+}
+
+.extract-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.extract-btn.loading {
+  background: linear-gradient(135deg, #3a6438, #4a7a48);
+  box-shadow: 0 2px 8px rgba(37, 92, 33, 0.2);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error Box ───────────────────────────────── */
+
+.error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-left: 3px solid #e53e3e;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  color: #c53030;
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+  line-height: 1.55;
+}
+
+/* ── Result Section ──────────────────────────── */
+
+.result-section {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px 0;
+}
+
+.result-title {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+/* ── Tabs ────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  margin-bottom: 14px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 7px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: rgba(0,0,0,0.04);
+}
+
+.tab.active {
+  color: var(--primary);
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  font-weight: 600;
+}
+
+/* ── Tab Content ─────────────────────────────── */
+
+.tab-content {
+  padding: 24px;
+}
+
+/* ── Footer ──────────────────────────────────── */
+
+.footer {
+  text-align: center;
+  padding: 18px 24px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-light);
+  background: var(--surface);
+}
+
+.footer strong {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Responsive ──────────────────────────────── */
+
+@media (max-width: 640px) {
+  .header-inner    { padding: 18px 20px; }
+  .header-text h1  { font-size: 1.05rem; }
+  .header-badge    { display: none; }
+  .main            { padding: 20px 16px 36px; }
+  .upload-card     { padding: 20px 16px; }
+  .result-header   { flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px 16px 0; }
+  .tab-content     { padding: 16px; }
+  .tab             { padding: 6px 12px; font-size: 0.79rem; }
+}
