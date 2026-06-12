@@ -2,18 +2,20 @@ import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import UploadSection from './components/UploadSection';
 import GestaoSection from './components/GestaoSection';
+import ConsultaSection from './components/ConsultaSection';
 import './index.css';
 import './App.css';
 
 const SECOES = [
-  { id: 'upload',       icon: 'upload',     label: 'Importar NF',            grupo: 'Nota Fiscal' },
-  { id: 'fornecedores', icon: 'building',   label: 'Fornecedores / Clientes', grupo: 'Cadastros' },
-  { id: 'faturados',    icon: 'user',       label: 'Faturados',               grupo: 'Cadastros' },
-  { id: 'despesas',     icon: 'trending-down', label: 'Tipos de Despesa',     grupo: 'Classificações' },
-  { id: 'receitas',     icon: 'trending-up',  label: 'Tipos de Receita',      grupo: 'Classificações' },
-  { id: 'apagar',       icon: 'credit-card',  label: 'Contas a Pagar',        grupo: 'Movimentos' },
-  { id: 'areceber',     icon: 'wallet',       label: 'Contas a Receber',      grupo: 'Movimentos' },
-  { id: 'parcelas',     icon: 'calendar',     label: 'Parcelas',              grupo: 'Movimentos' },
+  { id: 'upload',       icon: 'upload',       label: 'Importar NF',            grupo: 'Nota Fiscal' },
+  { id: 'fornecedores', icon: 'building',     label: 'Fornecedores / Clientes', grupo: 'Cadastros' },
+  { id: 'faturados',    icon: 'user',         label: 'Faturados',               grupo: 'Cadastros' },
+  { id: 'despesas',     icon: 'trending-down',label: 'Tipos de Despesa',        grupo: 'Classificações' },
+  { id: 'receitas',     icon: 'trending-up',  label: 'Tipos de Receita',        grupo: 'Classificações' },
+  { id: 'apagar',       icon: 'credit-card',  label: 'Contas a Pagar',          grupo: 'Movimentos' },
+  { id: 'areceber',     icon: 'wallet',       label: 'Contas a Receber',        grupo: 'Movimentos' },
+  { id: 'parcelas',     icon: 'calendar',     label: 'Parcelas',                grupo: 'Movimentos' },
+  { id: 'consulta',     icon: 'search',       label: 'Consulta IA (RAG)',       grupo: 'Inteligência' },
 ];
 
 export default function App() {
@@ -50,7 +52,8 @@ export default function App() {
 
         <main className="content-area">
           {secao === 'upload' && <UploadSection />}
-          {secao !== 'upload' && <GestaoSection secao={secao} />}
+          {secao === 'consulta' && <ConsultaSection />}
+          {secao !== 'upload' && secao !== 'consulta' && <GestaoSection secao={secao} />}
         </main>
       </div>
     </div>

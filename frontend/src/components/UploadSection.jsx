@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { extractNotaFiscal, lancarNotaFiscal } from '../services/api';
+import { extractNotaFiscal, lancarNotaFiscal, parsearErroAPI } from '../services/api';
 import './UploadSection.css';
 
 /* ── JsonViewer ──────────────────────────────────────── */
@@ -198,7 +198,7 @@ export default function UploadSection() {
     if (!file || loadingExtract || loadingLancar) return;
     setLoadingExtract(true); setError(null); setResult(null); setLancamentoResult(null);
     try { const d = await extractNotaFiscal(file); setResult(d); setTab('formatted'); }
-    catch (e) { setError(e.response?.data?.detail || e.message || 'Erro ao processar.'); }
+    catch (e) { setError(parsearErroAPI(e)); }
     finally { setLoadingExtract(false); }
   };
 
@@ -206,7 +206,7 @@ export default function UploadSection() {
     if (!file || loadingExtract || loadingLancar) return;
     setLoadingLancar(true); setError(null); setLancamentoResult(null);
     try { const d = await lancarNotaFiscal(file); setLancamentoResult(d); setTab('analise'); }
-    catch (e) { setError(e.response?.data?.detail || e.message || 'Erro ao lançar.'); }
+    catch (e) { setError(parsearErroAPI(e)); }
     finally { setLoadingLancar(false); }
   };
 

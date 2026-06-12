@@ -1,22 +1,34 @@
 # Extrator de Notas Fiscais com IA
 
-Sistema web que permite carregar um PDF de nota fiscal, acionar o Google Gemini via API para extrair os dados estruturados e exibir o resultado de forma formatada.
+Sistema web para leitura, persistência e consulta inteligente de notas fiscais, usando Google Gemini como motor de IA.
 
 ## Stack
 
 - **Backend:** Python + FastAPI + SQLAlchemy + Pydantic + Uvicorn
 - **Frontend:** React (Vite) + Axios
-- **IA:** Google Gemini API (`gemini-2.5-flash`)
+- **IA:** Google Gemini API (`gemini-2.5-flash` + `text-embedding-004`)
 - **Banco de dados:** PostgreSQL
 - **Containerização:** Docker + Docker Compose
 
 ## Funcionalidades
 
+### Etapa 1 — Extração de NF
 - Upload de PDF de nota fiscal
 - Extração automática de dados via IA (fornecedor, faturado, valor, parcelas, etc.)
 - Classificação automática da despesa por categoria
 - Visualização formatada e JSON dos dados extraídos
-- Botão para copiar o JSON extraído
+
+### Etapa 2 — Persistência e Gestão
+- Lançamento de notas no banco PostgreSQL (contas a pagar / a receber)
+- CRUD completo de Fornecedores, Faturados, Classificações e Movimentos
+- Prevenção de duplicatas por número de NF
+
+### Etapa 3 — Consulta com RAG
+- **RAG Simples:** perguntas em linguagem natural respondidas via busca textual (`ILIKE`) no banco
+- **RAG Embeddings:** busca semântica por similaridade de cosseno usando vetores `text-embedding-004`
+- Indexação dos movimentos como documentos vetorizados (tabela `rag_documents`)
+- Respostas elaboradas pelo Gemini com citação das fontes utilizadas
+- Histórico de consultas na sessão
 
 ## Pré-requisitos
 
@@ -98,3 +110,20 @@ O sistema extrai e classifica automaticamente:
 - Descrição dos produtos/serviços
 - Valor total e parcelas
 - Classificação da despesa (ex: Insumos Agrícolas, Manutenção, Serviços Operacionais...)
+
+## Endpoints RAG (Etapa 3)
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| `GET` | `/api/rag/status` | Retorna contagem de movimentos no banco e documentos indexados |
+| `POST` | `/api/rag/indexar` | (Re)gera embeddings de todos os movimentos — chame antes de usar o modo Embeddings |
+| `POST` | `/api/rag/perguntar` | Recebe `{ "pergunta": "...", "modo": "simples" \| "embeddings" }` e retorna resposta + fontes |
+
+### Como usar a Consulta RAG do zero
+
+1. Suba os containers: `docker-compose up --build`
+2. Importe ao menos uma nota fiscal pela tela **Importar NF** usando "Extrair e Lançar"
+3. Acesse a seção **Consulta IA (RAG)** na barra lateral
+4. Para o modo **RAG Simples**: basta digitar a pergunta e clicar em **Perguntar**
+5. Para o modo **RAG Embeddings**: clique em **Indexar base** primeiro (aguarde a confirmação), depois faça a pergunta
+6. As fontes utilizadas são listadas abaixo da resposta

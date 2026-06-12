@@ -1,9 +1,10 @@
-import google.generativeai as genai
-import base64
+from google import genai
+from google.genai import types
 import json
+import time
 from app.config import settings
 
-genai.configure(api_key=settings.GEMINI_API_KEY)
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 EXTRACTION_PROMPT = """Você é um especialista em análise de notas fiscais brasileiras.
 
@@ -56,20 +57,23 @@ Regras para classificação de despesa (campo classificacoes_despesa):
 
 
 def extract_nota_fiscal(pdf_bytes: bytes) -> dict:
-    # gemini_service.py
-    model = genai.GenerativeModel("gemini-2.5-flash")
-
-    pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
-
-    response = model.generate_content([
-        {
-            "inline_data": {
-                "mime_type": "application/pdf",
-                "data": pdf_base64,
-            }
-        },
-        EXTRACTION_PROMPT,
-    ])
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
+                    EXTRACTION_PROMPT,
+                ],
+            )
+            break
+        except Exception as e:
+            if attempt == 2:
+                raise
+            if "429" in str(e) or "quota" in str(e).lower():
+                time.sleep(10 * (attempt + 1))
+            else:
+                raise
 
     raw_text = response.text.strip()
 

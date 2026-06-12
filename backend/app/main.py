@@ -3,12 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.controllers.extractor_controller import router as extractor_router
 from app.controllers.lancamento_controller import router as lancamento_router
 from app.controllers.gestao_controller import router as gestao_router
+from app.controllers.rag_controller import router as rag_router
 from app.database import Base, engine
 import app.models
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Extrator de Notas Fiscais", version="2.0.0")
+app = FastAPI(title="Extrator de Notas Fiscais", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,6 +22,7 @@ app.add_middleware(
 app.include_router(extractor_router)
 app.include_router(lancamento_router)
 app.include_router(gestao_router)
+app.include_router(rag_router)
 
 
 @app.get("/health")

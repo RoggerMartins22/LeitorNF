@@ -4,6 +4,37 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
 });
 
+export function parsearErroAPI(e) {
+  const status = e.response?.status;
+  const detail = e.response?.data?.detail || '';
+
+  if (status === 429 || detail.includes('RESOURCE_EXHAUSTED')) {
+    const retry = detail.match(/retry in (\d+)/i);
+    const suffix = retry ? ` Tente novamente em ${retry[1]}s.` : '';
+    return `Cota da API Gemini esgotada. Gere uma nova chave em aistudio.google.com/app/apikey ou aguarde o reset diário.${suffix}`;
+  }
+
+  if (status === 404 || detail.includes('NOT_FOUND')) {
+    if (detail.includes('not found for API version')) {
+      return 'Modelo de IA indisponível para esta chave de API. Verifique a configuração.';
+    }
+  }
+
+  if (!e.response) {
+    return 'Sem conexão com o servidor. Verifique se os containers estão rodando.';
+  }
+
+  if (status === 400) return detail || 'Requisição inválida.';
+  if (status === 422) return detail || 'Arquivo inválido ou dados incorretos.';
+  if (status === 500) {
+    // Remove o prefixo verbose do FastAPI e o JSON do Gemini
+    const clean = detail.replace(/^Erro ao .+?: /, '').replace(/\{.*\}/s, '').trim();
+    return clean || 'Erro interno no servidor.';
+  }
+
+  return detail || e.message || 'Erro desconhecido.';
+}
+
 export const extractNotaFiscal = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -40,3 +71,13 @@ export const atualizarMovimento = (id, data) => api.put(`/api/gestao/movimentos/
 
 // ── PARCELAS ─────────────────────────────────────────────────────────────
 export const getParcelas = () => api.get('/api/gestao/parcelas').then(r => r.data);
+
+// ── RAG ──────────────────────────────────────────────────────────────────
+export const perguntarRAG = (pergunta, modo) =>
+  api.post('/api/rag/perguntar', { pergunta, modo }).then(r => r.data);
+
+export const indexarRAG = () =>
+  api.post('/api/rag/indexar').then(r => r.data);
+
+export const statusRAG = () =>
+  api.get('/api/rag/status').then(r => r.data);
