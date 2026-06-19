@@ -15,6 +15,7 @@ class MovimentoContas(Base):
     descricao_produtos = Column(String, nullable=True)
     pessoa_id = Column(Integer, ForeignKey("pessoas.id"), nullable=True)     # fornecedor/cliente
     faturado_id = Column(Integer, ForeignKey("pessoas.id"), nullable=True)   # faturado
+    ativo = Column(Boolean, nullable=False, default=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
     parcelas = relationship("ParcelaContas", back_populates="movimento")

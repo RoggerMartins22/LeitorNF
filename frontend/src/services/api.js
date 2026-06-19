@@ -4,6 +4,30 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
 });
 
+// ── Interceptors ────────────────────────────────────────────────────────
+// Attach Authorization: Bearer <token> if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('nf_token');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// On 401, clear credentials and notify the app
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('nf_token');
+      localStorage.removeItem('nf_usuario');
+      window.dispatchEvent(new Event('auth:logout'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function parsearErroAPI(e) {
   const status = e.response?.status;
   const detail = e.response?.data?.detail || '';
@@ -69,6 +93,13 @@ export const getMovimento       = (id) => api.get(`/api/gestao/movimentos/${id}`
 export const criarMovimento     = (data) => api.post('/api/gestao/movimentos', data).then(r => r.data);
 export const atualizarMovimento = (id, data) => api.put(`/api/gestao/movimentos/${id}`, data).then(r => r.data);
 
+// Busca filtrada (q por descrição, numero_nf, tipo, ativo, order_by, order_dir)
+export const buscarMovimentos = (params = {}) =>
+  api.get('/api/gestao/movimentos', { params }).then(r => r.data);
+// Lista somente movimentos ativos (ordenados por criado_em DESC)
+export const todosMovimentos = () =>
+  api.get('/api/gestao/movimentos/todos').then(r => r.data);
+
 // ── PARCELAS ─────────────────────────────────────────────────────────────
 export const getParcelas = () => api.get('/api/gestao/parcelas').then(r => r.data);
 
@@ -81,3 +112,35 @@ export const indexarRAG = () =>
 
 export const statusRAG = () =>
   api.get('/api/rag/status').then(r => r.data);
+
+// ── AUTH ─────────────────────────────────────────────────────────────────
+export const login = (loginValue, senha) =>
+  api.post('/api/auth/login', { login: loginValue, senha }).then(r => r.data);
+
+export const getMe = () => api.get('/api/auth/me').then(r => r.data);
+
+// ── CONTAS ───────────────────────────────────────────────────────────────
+export const buscarContas = (params = {}) =>
+  api.get('/api/gestao/contas', { params }).then(r => r.data);
+export const todosContas = () =>
+  api.get('/api/gestao/contas/todos').then(r => r.data);
+export const criarConta = (dados) =>
+  api.post('/api/gestao/contas', dados).then(r => r.data);
+export const atualizarConta = (id, dados) =>
+  api.put(`/api/gestao/contas/${id}`, dados).then(r => r.data);
+export const inativarConta = (id) =>
+  api.patch(`/api/gestao/contas/${id}/inativar`).then(r => r.data);
+export const reativarConta = (id) =>
+  api.patch(`/api/gestao/contas/${id}/reativar`).then(r => r.data);
+
+// ── PESSOAS (busca / todos) ──────────────────────────────────────────────
+export const buscarPessoas = (params = {}) =>
+  api.get('/api/gestao/pessoas', { params }).then(r => r.data);
+export const todasPessoas = () =>
+  api.get('/api/gestao/pessoas/todos').then(r => r.data);
+
+// ── CLASSIFICAÇÕES (busca / todos) ───────────────────────────────────────
+export const buscarClassificacoes = (params = {}) =>
+  api.get('/api/gestao/classificacoes', { params }).then(r => r.data);
+export const todasClassificacoes = () =>
+  api.get('/api/gestao/classificacoes/todos').then(r => r.data);

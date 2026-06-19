@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import UploadSection from './components/UploadSection';
 import GestaoSection from './components/GestaoSection';
 import ConsultaSection from './components/ConsultaSection';
+import ContasSection from './components/ContasSection';
+import LoginSection from './components/LoginSection';
 import './index.css';
 import './App.css';
 
 const SECOES = [
-  { id: 'upload',       icon: 'upload',       label: 'Importar NF',            grupo: 'Nota Fiscal' },
+  { id: 'upload',       icon: 'upload',       label: 'Importar NF',             grupo: 'Nota Fiscal' },
   { id: 'fornecedores', icon: 'building',     label: 'Fornecedores / Clientes', grupo: 'Cadastros' },
   { id: 'faturados',    icon: 'user',         label: 'Faturados',               grupo: 'Cadastros' },
+  { id: 'contas',       icon: 'contas',       label: 'Contas',                  grupo: 'Cadastros' },
   { id: 'despesas',     icon: 'trending-down',label: 'Tipos de Despesa',        grupo: 'Classificações' },
   { id: 'receitas',     icon: 'trending-up',  label: 'Tipos de Receita',        grupo: 'Classificações' },
   { id: 'apagar',       icon: 'credit-card',  label: 'Contas a Pagar',          grupo: 'Movimentos' },
@@ -21,6 +24,26 @@ const SECOES = [
 export default function App() {
   const [secao, setSecao] = useState('upload');
   const [collapsed, setCollapsed] = useState(false);
+  const [usuario, setUsuario] = useState(() => {
+    const stored = localStorage.getItem('nf_usuario');
+    try { return stored ? JSON.parse(stored) : null; } catch { return null; }
+  });
+
+  useEffect(() => {
+    const handleLogout = () => setUsuario(null);
+    window.addEventListener('auth:logout', handleLogout);
+    return () => window.removeEventListener('auth:logout', handleLogout);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('nf_token');
+    localStorage.removeItem('nf_usuario');
+    setUsuario(null);
+  };
+
+  if (!usuario) {
+    return <LoginSection onLogin={setUsuario} />;
+  }
 
   const itemAtual = SECOES.find(s => s.id === secao);
 
@@ -32,6 +55,8 @@ export default function App() {
         collapsed={collapsed}
         onToggle={() => setCollapsed(c => !c)}
         onNavegar={setSecao}
+        usuario={usuario}
+        onLogout={handleLogout}
       />
 
       <div className="main-area">
@@ -53,7 +78,8 @@ export default function App() {
         <main className="content-area">
           {secao === 'upload' && <UploadSection />}
           {secao === 'consulta' && <ConsultaSection />}
-          {secao !== 'upload' && secao !== 'consulta' && <GestaoSection secao={secao} />}
+          {secao === 'contas' && <ContasSection />}
+          {secao !== 'upload' && secao !== 'consulta' && secao !== 'contas' && <GestaoSection secao={secao} />}
         </main>
       </div>
     </div>

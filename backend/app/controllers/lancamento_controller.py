@@ -1,3 +1,4 @@
+# NOTA Etapa 4: rota intencionalmente não protegida — decisão registrada no AUDIT.md.
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db

@@ -29,6 +29,8 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-nf_user}:${POSTGRES_PASSWORD:-nf_pass}@db:5432/${POSTGRES_DB:-nf_db}
+      - SECRET_KEY=${SECRET_KEY}
+      - FRONTEND_ORIGINS=${FRONTEND_ORIGINS:-}
     depends_on:
       db:
         condition: service_healthy

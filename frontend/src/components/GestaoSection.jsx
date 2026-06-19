@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   getPessoas, criarPessoa, atualizarPessoa, inativarPessoa, reativarPessoa,
+  buscarPessoas, todasPessoas,
   getClassificacoes, criarClassificacao, atualizarClassificacao, inativarClassificacao,
   reativarClassificacao,
-  getMovimentos, getMovimento, criarMovimento, atualizarMovimento,
+  buscarClassificacoes, todasClassificacoes,
+  getMovimento, criarMovimento, atualizarMovimento,
+  buscarMovimentos, todosMovimentos,
   getParcelas,
+  parsearErroAPI,
 } from '../services/api';
 import './GestaoSection.css';
 
@@ -77,7 +81,7 @@ function ModalFooter({ onClose, onSave, saving }) {
 
 /* ── Ações de linha ──────────────────────────────── */
 
-function RowActions({ ativo, onEdit, onStatus, loading }) {
+function RowActions({ ativo, onEdit, onStatus, loading, excluirLabel = 'Excluir' }) {
   return (
     <div className="g-row-actions">
       <button className="g-action g-action-edit" onClick={onEdit} disabled={loading} title="Editar">
@@ -87,8 +91,8 @@ function RowActions({ ativo, onEdit, onStatus, loading }) {
         </svg>
       </button>
       {ativo
-        ? <button className="g-action g-action-warn" onClick={onStatus} disabled={loading} title="Inativar">
-            {loading ? <span className="g-mini-spinner"/> : 'Inativar'}
+        ? <button className="g-action g-action-warn" onClick={onStatus} disabled={loading} title={`${excluirLabel} (inativar)`}>
+            {loading ? <span className="g-mini-spinner"/> : excluirLabel}
           </button>
         : <button className="g-action g-action-success" onClick={onStatus} disabled={loading} title="Reativar">
             {loading ? <span className="g-mini-spinner"/> : 'Reativar'}
@@ -98,78 +102,226 @@ function RowActions({ ativo, onEdit, onStatus, loading }) {
   );
 }
 
+function SortHeader({ field, label, colSort, colDir, onSort }) {
+  const active = colSort === field;
+  const arrow = active ? (colDir === 'asc' ? '▲' : '▼') : '';
+  return (
+    <th
+      onClick={() => onSort(field)}
+      style={{ cursor: 'pointer', userSelect: 'none' }}
+      title={`Ordenar por ${label}`}
+    >
+      {label} {active && <span style={{ marginLeft: 4 }}>{arrow}</span>}
+    </th>
+  );
+}
+
 /* ══════════════════════════════════════════════════
    PESSOAS
 ══════════════════════════════════════════════════ */
 
 function PessoasSection({ tipoFiltro }) {
   const [pessoas, setPessoas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState(null);
+  const [statusFiltro, setStatusFiltro] = useState('TODOS'); // TODOS | ATIVOS | INATIVOS
   const [filtro, setFiltro] = useState(tipoFiltro || 'TODOS');
   const [modal, setModal] = useState(null);
-  const [busca, setBusca] = useState('');
+  const [nomeFilter, setNomeFilter] = useState('');
+  const [docFilter, setDocFilter] = useState('');
 
-  const carregar = useCallback(async () => {
+  const [colSort, setColSort] = useState('criado_em');
+  const [colDir, setColDir] = useState('desc');
+  const [lastAction, setLastAction] = useState(null); // 'buscar' | 'todos' | null
+
+  const omitEmpty = (obj) => {
+    const out = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      if (v !== '' && v !== null && v !== undefined) out[k] = v;
+    });
+    return out;
+  };
+
+  const statusToAtivo = (s) => {
+    if (s === 'ATIVOS') return true;
+    if (s === 'INATIVOS') return false;
+    return undefined;
+  };
+
+  const runBuscar = async (sort = colSort, dir = colDir) => {
     setLoading(true);
-    try { setPessoas(await getPessoas()); } finally { setLoading(false); }
-  }, []);
+    try {
+      const tipoParam = tipoFiltro
+        ? tipoFiltro
+        : (filtro === 'TODOS' ? '' : filtro);
+      const params = omitEmpty({
+        q: nomeFilter.trim(),
+        documento: docFilter.trim(),
+        tipo: tipoParam,
+        ativo: statusToAtivo(statusFiltro),
+        order_by: sort,
+        order_dir: dir,
+      });
+      const data = await buscarPessoas(params);
+      setPessoas(Array.isArray(data) ? data : []);
+      setLastAction('buscar');
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao buscar pessoas.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  useEffect(() => { carregar(); }, [carregar]);
+  const runTodos = async () => {
+    setLoading(true);
+    try {
+      const data = await todasPessoas();
+      let arr = Array.isArray(data) ? data : [];
+      if (tipoFiltro) arr = arr.filter(p => p.tipo === tipoFiltro);
+      setPessoas(arr);
+      setLastAction('todos');
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao listar pessoas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runLimpar = () => {
+    setStatusFiltro('TODOS');
+    setFiltro(tipoFiltro || 'TODOS');
+    setNomeFilter('');
+    setDocFilter('');
+    setPessoas([]);
+    setLastAction(null);
+  };
+
+  const replayLast = async (sort = colSort, dir = colDir) => {
+    if (lastAction === 'buscar') return runBuscar(sort, dir);
+    if (lastAction === 'todos') return runTodos();
+  };
+
+  const handleSort = (field) => {
+    let nextDir;
+    if (colSort === field) nextDir = colDir === 'desc' ? 'asc' : 'desc';
+    else nextDir = 'desc';
+    setColSort(field);
+    setColDir(nextDir);
+    if (lastAction) replayLast(field, nextDir);
+  };
 
   const handleStatus = async (p) => {
+    const mensagem = p.ativo
+      ? `Deseja realmente excluir (inativar) "${p.razao_social || p.nome_fantasia || '#' + p.id}"?`
+      : `Deseja reativar "${p.razao_social || p.nome_fantasia || '#' + p.id}"?`;
+    if (!window.confirm(mensagem)) return;
     setActionId(p.id);
-    try { p.ativo ? await inativarPessoa(p.id) : await reativarPessoa(p.id); await carregar(); }
-    finally { setActionId(null); }
+    try {
+      if (p.ativo) await inativarPessoa(p.id);
+      else await reativarPessoa(p.id);
+      await replayLast();
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao alterar status.');
+    } finally {
+      setActionId(null);
+    }
   };
 
   const handleSalvar = async (dados) => {
     if (modal.modo === 'criar') await criarPessoa(dados);
     else await atualizarPessoa(modal.dados.id, dados);
-    setModal(null); await carregar();
+    setModal(null);
+    await replayLast();
   };
 
-  let lista = filtro === 'TODOS' ? pessoas : pessoas.filter(p => p.tipo === filtro);
-  if (busca.trim()) lista = lista.filter(p =>
-    (p.razao_social || '').toLowerCase().includes(busca.toLowerCase()) ||
-    (p.cnpj || '').includes(busca) || (p.cpf || '').includes(busca)
-  );
+  // Apenas filtro local para o botão de tipo quando NÃO se está fazendo buscar
+  // (a busca via API já passa tipo). Mantém UX consistente entre Buscar/Todos.
+  let lista = pessoas;
+  if (!tipoFiltro && filtro !== 'TODOS') {
+    lista = pessoas.filter(p => p.tipo === filtro);
+  }
 
   return (
     <div className="g-section">
+      <div className="g-filters-row">
+        <select
+          className="g-filter-select"
+          value={statusFiltro}
+          onChange={e => setStatusFiltro(e.target.value)}
+          title="Status"
+        >
+          <option value="TODOS">Todos os status</option>
+          <option value="ATIVOS">Apenas ativos</option>
+          <option value="INATIVOS">Apenas inativos</option>
+        </select>
+
+        {!tipoFiltro && (
+          <select
+            className="g-filter-select"
+            value={filtro}
+            onChange={e => setFiltro(e.target.value)}
+            title="Tipo"
+          >
+            <option value="TODOS">Todos os tipos</option>
+            <option value="CLIENTE-FORNECEDOR">Fornecedores (CLIENTE-FORNECEDOR)</option>
+            <option value="FATURADO">Faturados (FATURADO)</option>
+          </select>
+        )}
+
+        <input
+          className="g-filter-input"
+          value={nomeFilter}
+          onChange={e => setNomeFilter(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') runBuscar(); }}
+          placeholder="Nome"
+        />
+        <input
+          className="g-filter-input"
+          value={docFilter}
+          onChange={e => setDocFilter(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') runBuscar(); }}
+          placeholder="CNPJ / CPF"
+        />
+      </div>
+
       <div className="g-toolbar">
         <button className="g-btn-new" onClick={() => setModal({ modo: 'criar', dados: {} })}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo Cadastro
         </button>
-        {!tipoFiltro && (
-          <div className="g-filter-group">
-            {['TODOS', 'CLIENTE-FORNECEDOR', 'FATURADO'].map(t => (
-              <button key={t} className={`g-filter-btn ${filtro === t ? 'active' : ''}`} onClick={() => setFiltro(t)}>
-                {t === 'TODOS' ? 'Todos' : t === 'CLIENTE-FORNECEDOR' ? 'Fornecedores' : 'Faturados'}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="g-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..." />
-        </div>
+        <button className="g-btn-new" onClick={() => runBuscar()} disabled={loading}>Buscar</button>
+        <button className="g-btn-new" onClick={runTodos} disabled={loading}>Todos</button>
+        <button className="g-btn-clear" onClick={runLimpar} disabled={loading}>Limpar</button>
         <span className="g-count">{lista.length} registro(s)</span>
       </div>
 
-      {loading ? <Loader /> : lista.length === 0 ? <Empty msg="Nenhum cadastro encontrado." /> : (
+      {loading ? <Loader /> : lista.length === 0 ? (
+        <Empty msg="Nenhuma pessoa carregada. Use Buscar ou Todos para listar." />
+      ) : (
         <div className="g-table-wrap">
           <table className="g-table">
-            <thead><tr><th>ID</th><th>Tipo</th><th>Nome / Razão Social</th><th>CNPJ / CPF</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <SortHeader field="tipo" label="Tipo" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="razao_social" label="Razão Social" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="nome_fantasia" label="Nome Fantasia" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="cnpj" label="CNPJ / CPF" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="ativo" label="Status" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="criado_em" label="Criado em" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <th>Ações</th>
+              </tr>
+            </thead>
             <tbody>
               {lista.map(p => (
                 <tr key={p.id} className={!p.ativo ? 'row-dim' : ''}>
                   <td className="td-id">#{p.id}</td>
                   <td><Pill variant={p.tipo === 'CLIENTE-FORNECEDOR' ? 'blue' : 'purple'}>{p.tipo === 'CLIENTE-FORNECEDOR' ? 'Fornecedor' : 'Faturado'}</Pill></td>
                   <td className="td-main">{p.razao_social || '—'}</td>
+                  <td>{p.nome_fantasia || '—'}</td>
                   <td className="td-mono">{p.cnpj || p.cpf || '—'}</td>
                   <td><Badge ativo={p.ativo} /></td>
+                  <td>{p.criado_em ? new Date(p.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
                   <td>
                     <RowActions ativo={p.ativo} onEdit={() => setModal({ modo: 'editar', dados: p })}
                       onStatus={() => handleStatus(p)} loading={actionId === p.id} />
@@ -199,7 +351,7 @@ function ModalPessoa({ modo, dados, onClose, onSalvar }) {
     if (!form.razao_social.trim()) { setErr('Razão Social é obrigatória.'); return; }
     setSaving(true);
     try { await onSalvar(form); }
-    catch (e) { setErr(e.response?.data?.detail || 'Erro ao salvar.'); setSaving(false); }
+    catch (e) { setErr(parsearErroAPI(e) || 'Erro ao salvar.'); setSaving(false); }
   };
 
   return (
@@ -241,45 +393,186 @@ function ModalPessoa({ modo, dados, onClose, onSalvar }) {
 
 function ClassificacoesSection({ tipoFiltro }) {
   const [clfs, setClfs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState(null);
   const [modal, setModal] = useState(null);
 
-  const carregar = useCallback(async () => {
-    setLoading(true);
-    try { setClfs(await getClassificacoes()); } finally { setLoading(false); }
-  }, []);
+  const [statusFiltro, setStatusFiltro] = useState('TODOS');
+  const [descFilter, setDescFilter] = useState('');
+  // Filtro local de tipo (não usado se tipoFiltro está fixo)
+  const [filtro, setFiltro] = useState(tipoFiltro || 'TODOS');
 
-  useEffect(() => { carregar(); }, [carregar]);
+  const [colSort, setColSort] = useState('criado_em');
+  const [colDir, setColDir] = useState('desc');
+  const [lastAction, setLastAction] = useState(null);
+
+  const omitEmpty = (obj) => {
+    const out = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      if (v !== '' && v !== null && v !== undefined) out[k] = v;
+    });
+    return out;
+  };
+
+  const statusToAtivo = (s) => {
+    if (s === 'ATIVOS') return true;
+    if (s === 'INATIVOS') return false;
+    return undefined;
+  };
+
+  const runBuscar = async (sort = colSort, dir = colDir) => {
+    setLoading(true);
+    try {
+      const tipoParam = tipoFiltro
+        ? tipoFiltro
+        : (filtro === 'TODOS' ? '' : filtro);
+      const params = omitEmpty({
+        q: descFilter.trim(),
+        tipo: tipoParam,
+        ativo: statusToAtivo(statusFiltro),
+        order_by: sort,
+        order_dir: dir,
+      });
+      const data = await buscarClassificacoes(params);
+      setClfs(Array.isArray(data) ? data : []);
+      setLastAction('buscar');
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao buscar classificações.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runTodos = async () => {
+    setLoading(true);
+    try {
+      const data = await todasClassificacoes();
+      let arr = Array.isArray(data) ? data : [];
+      if (tipoFiltro) arr = arr.filter(c => c.tipo === tipoFiltro);
+      setClfs(arr);
+      setLastAction('todos');
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao listar classificações.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runLimpar = () => {
+    setStatusFiltro('TODOS');
+    setFiltro(tipoFiltro || 'TODOS');
+    setDescFilter('');
+    setClfs([]);
+    setLastAction(null);
+  };
+
+  const replayLast = async (sort = colSort, dir = colDir) => {
+    if (lastAction === 'buscar') return runBuscar(sort, dir);
+    if (lastAction === 'todos') return runTodos();
+  };
+
+  const handleSort = (field) => {
+    let nextDir;
+    if (colSort === field) nextDir = colDir === 'desc' ? 'asc' : 'desc';
+    else nextDir = 'desc';
+    setColSort(field);
+    setColDir(nextDir);
+    if (lastAction) replayLast(field, nextDir);
+  };
 
   const handleStatus = async (c) => {
+    const mensagem = c.ativo
+      ? `Deseja realmente excluir (inativar) a classificação "${c.descricao}"?`
+      : `Deseja reativar a classificação "${c.descricao}"?`;
+    if (!window.confirm(mensagem)) return;
     setActionId(c.id);
-    try { c.ativo ? await inativarClassificacao(c.id) : await reativarClassificacao(c.id); await carregar(); }
-    finally { setActionId(null); }
+    try {
+      if (c.ativo) await inativarClassificacao(c.id);
+      else await reativarClassificacao(c.id);
+      await replayLast();
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao alterar status.');
+    } finally {
+      setActionId(null);
+    }
   };
 
   const handleSalvar = async (dados) => {
     if (modal.modo === 'criar') await criarClassificacao(dados);
     else await atualizarClassificacao(modal.dados.id, dados);
-    setModal(null); await carregar();
+    setModal(null);
+    await replayLast();
   };
 
-  const lista = tipoFiltro ? clfs.filter(c => c.tipo === tipoFiltro) : clfs;
+  // Filtro local opcional (quando tipoFiltro não está fixo via prop)
+  let lista = clfs;
+  if (!tipoFiltro && filtro !== 'TODOS') {
+    lista = clfs.filter(c => c.tipo === filtro);
+  }
 
   return (
     <div className="g-section">
+      <div className="g-filters-row">
+        <select
+          className="g-filter-select"
+          value={statusFiltro}
+          onChange={e => setStatusFiltro(e.target.value)}
+          title="Status"
+        >
+          <option value="TODOS">Todos os status</option>
+          <option value="ATIVOS">Apenas ativos</option>
+          <option value="INATIVOS">Apenas inativos</option>
+        </select>
+
+        {!tipoFiltro && (
+          <select
+            className="g-filter-select"
+            value={filtro}
+            onChange={e => setFiltro(e.target.value)}
+            title="Tipo"
+          >
+            <option value="TODOS">Todos os tipos</option>
+            <option value="DESPESA">DESPESA</option>
+            <option value="RECEITA">RECEITA</option>
+          </select>
+        )}
+
+        <input
+          className="g-filter-input"
+          value={descFilter}
+          onChange={e => setDescFilter(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') runBuscar(); }}
+          placeholder="Descrição"
+        />
+      </div>
+
       <div className="g-toolbar">
         <button className="g-btn-new" onClick={() => setModal({ modo: 'criar', dados: { tipo: tipoFiltro || 'DESPESA' } })}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nova Classificação
         </button>
+        <button className="g-btn-new" onClick={() => runBuscar()} disabled={loading}>Buscar</button>
+        <button className="g-btn-new" onClick={runTodos} disabled={loading}>Todos</button>
+        <button className="g-btn-clear" onClick={runLimpar} disabled={loading}>Limpar</button>
+
         <span className="g-count">{lista.length} registro(s)</span>
       </div>
 
-      {loading ? <Loader /> : lista.length === 0 ? <Empty msg="Nenhuma classificação cadastrada." /> : (
+      {loading ? <Loader /> : lista.length === 0 ? (
+        <Empty msg="Nenhuma classificação carregada. Use Buscar ou Todos para listar." />
+      ) : (
         <div className="g-table-wrap">
           <table className="g-table">
-            <thead><tr><th>ID</th><th>Tipo</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <SortHeader field="tipo" label="Tipo" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="descricao" label="Descrição" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="ativo" label="Status" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <SortHeader field="criado_em" label="Criado em" colSort={colSort} colDir={colDir} onSort={handleSort} />
+                <th>Ações</th>
+              </tr>
+            </thead>
             <tbody>
               {lista.map(c => (
                 <tr key={c.id} className={!c.ativo ? 'row-dim' : ''}>
@@ -287,6 +580,7 @@ function ClassificacoesSection({ tipoFiltro }) {
                   <td><Pill variant={c.tipo === 'DESPESA' ? 'red' : 'green'}>{c.tipo}</Pill></td>
                   <td className="td-main">{c.descricao}</td>
                   <td><Badge ativo={c.ativo} /></td>
+                  <td>{c.criado_em ? new Date(c.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
                   <td>
                     <RowActions ativo={c.ativo} onEdit={() => setModal({ modo: 'editar', dados: c })}
                       onStatus={() => handleStatus(c)} loading={actionId === c.id} />
@@ -312,7 +606,7 @@ function ModalClassificacao({ modo, dados, tipoFixo, onClose, onSalvar }) {
     if (!form.descricao.trim()) { setErr('Descrição é obrigatória.'); return; }
     setSaving(true);
     try { await onSalvar(form); }
-    catch (e) { setErr(e.response?.data?.detail || 'Erro ao salvar.'); setSaving(false); }
+    catch (e) { setErr(parsearErroAPI(e) || 'Erro ao salvar.'); setSaving(false); }
   };
 
   return (
@@ -342,22 +636,123 @@ function ModalClassificacao({ modo, dados, tipoFixo, onClose, onSalvar }) {
 
 function MovimentosSection({ tipoFiltro }) {
   const [movimentos, setMovimentos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [detalhe, setDetalhe] = useState(null);
   const [loadingDet, setLoadingDet] = useState(false);
   const [modal, setModal] = useState(null);
+  // Carregados lazy quando o modal abre — não fazemos fetch no mount.
   const [pessoas, setPessoas] = useState([]);
   const [classificacoes, setClassificacoes] = useState([]);
+  const [refsLoaded, setRefsLoaded] = useState(false);
 
-  const carregar = useCallback(async () => {
+  // Filtros
+  const [statusFiltro, setStatusFiltro] = useState('TODOS');
+  const [filtroTipo, setFiltroTipo] = useState(tipoFiltro || 'TODOS');
+  const [numeroNfFilter, setNumeroNfFilter] = useState('');
+  const [descFilter, setDescFilter] = useState('');
+
+  const [colSort, setColSort] = useState('criado_em');
+  const [colDir, setColDir] = useState('desc');
+  const [lastAction, setLastAction] = useState(null);
+
+  const omitEmpty = (obj) => {
+    const out = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      if (v !== '' && v !== null && v !== undefined) out[k] = v;
+    });
+    return out;
+  };
+
+  const statusToAtivo = (s) => {
+    if (s === 'ATIVOS') return true;
+    if (s === 'INATIVOS') return false;
+    return undefined;
+  };
+
+  const runBuscar = async (sort = colSort, dir = colDir) => {
     setLoading(true);
     try {
-      const [movs, pess, clfs] = await Promise.all([getMovimentos(), getPessoas(), getClassificacoes()]);
-      setMovimentos(movs); setPessoas(pess); setClassificacoes(clfs);
-    } finally { setLoading(false); }
-  }, []);
+      const tipoParam = tipoFiltro
+        ? tipoFiltro
+        : (filtroTipo === 'TODOS' ? '' : filtroTipo);
+      const params = omitEmpty({
+        q: descFilter.trim(),
+        numero_nf: numeroNfFilter.trim(),
+        tipo: tipoParam,
+        ativo: statusToAtivo(statusFiltro),
+        order_by: sort,
+        order_dir: dir,
+      });
+      const data = await buscarMovimentos(params);
+      setMovimentos(Array.isArray(data) ? data : []);
+      setLastAction('buscar');
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao buscar movimentos.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  useEffect(() => { carregar(); }, [carregar]);
+  const runTodos = async () => {
+    setLoading(true);
+    try {
+      const data = await todosMovimentos();
+      let arr = Array.isArray(data) ? data : [];
+      if (tipoFiltro) arr = arr.filter(m => m.tipo === tipoFiltro);
+      setMovimentos(arr);
+      setLastAction('todos');
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao listar movimentos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runLimpar = () => {
+    setStatusFiltro('TODOS');
+    setFiltroTipo(tipoFiltro || 'TODOS');
+    setNumeroNfFilter('');
+    setDescFilter('');
+    setMovimentos([]);
+    setLastAction(null);
+  };
+
+  const replayLast = async (sort = colSort, dir = colDir) => {
+    if (lastAction === 'buscar') return runBuscar(sort, dir);
+    if (lastAction === 'todos') return runTodos();
+  };
+
+  const handleSort = (field) => {
+    let nextDir;
+    if (colSort === field) nextDir = colDir === 'desc' ? 'asc' : 'desc';
+    else nextDir = 'desc';
+    setColSort(field);
+    setColDir(nextDir);
+    if (lastAction) replayLast(field, nextDir);
+  };
+
+  // Carrega pessoas/classificações sob demanda, só quando o modal abre.
+  const ensureRefs = async () => {
+    if (refsLoaded) return;
+    try {
+      const [pess, clfs] = await Promise.all([getPessoas(), getClassificacoes()]);
+      setPessoas(pess || []);
+      setClassificacoes(clfs || []);
+      setRefsLoaded(true);
+    } catch (e) {
+      alert(parsearErroAPI(e) || 'Erro ao carregar dados de apoio para o cadastro.');
+    }
+  };
+
+  const abrirNovoModal = async () => {
+    await ensureRefs();
+    setModal({ modo: 'criar', dados: { tipo: tipoFiltro || 'APAGAR' } });
+  };
+
+  const abrirEditarModal = async (m) => {
+    await ensureRefs();
+    setModal({ modo: 'editar', dados: m });
+  };
 
   const verDetalhe = async (id) => {
     if (detalhe?.id === id) { setDetalhe(null); return; }
@@ -368,34 +763,91 @@ function MovimentosSection({ tipoFiltro }) {
   const handleSalvar = async (dados) => {
     if (modal.modo === 'criar') await criarMovimento(dados);
     else await atualizarMovimento(modal.dados.id, dados);
-    setModal(null); await carregar();
+    setModal(null);
+    await replayLast();
   };
 
-  const lista = tipoFiltro ? movimentos.filter(m => m.tipo === tipoFiltro) : movimentos;
+  const lista = movimentos;
 
   return (
     <div className="g-section">
+      <div className="g-filters-row">
+        <select
+          className="g-filter-select"
+          value={statusFiltro}
+          onChange={e => setStatusFiltro(e.target.value)}
+          title="Status"
+        >
+          <option value="TODOS">Todos os status</option>
+          <option value="ATIVOS">Apenas ativos</option>
+          <option value="INATIVOS">Apenas inativos</option>
+        </select>
+
+        {!tipoFiltro && (
+          <select
+            className="g-filter-select"
+            value={filtroTipo}
+            onChange={e => setFiltroTipo(e.target.value)}
+            title="Tipo"
+          >
+            <option value="TODOS">Todos os tipos</option>
+            <option value="APAGAR">A Pagar (APAGAR)</option>
+            <option value="ARECEBER">A Receber (ARECEBER)</option>
+          </select>
+        )}
+
+        <input
+          className="g-filter-input"
+          value={numeroNfFilter}
+          onChange={e => setNumeroNfFilter(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') runBuscar(); }}
+          placeholder="Nº NF"
+        />
+        <input
+          className="g-filter-input"
+          value={descFilter}
+          onChange={e => setDescFilter(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') runBuscar(); }}
+          placeholder="Descrição"
+        />
+      </div>
+
       <div className="g-toolbar">
-        <button className="g-btn-new" onClick={() => setModal({ modo: 'criar', dados: { tipo: tipoFiltro || 'APAGAR' } })}>
+        <button className="g-btn-new" onClick={abrirNovoModal}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo Movimento
         </button>
+        <button className="g-btn-new" onClick={() => runBuscar()} disabled={loading}>Buscar</button>
+        <button className="g-btn-new" onClick={runTodos} disabled={loading}>Todos</button>
+        <button className="g-btn-clear" onClick={runLimpar} disabled={loading}>Limpar</button>
         <span className="g-count">{lista.length} movimento(s)</span>
       </div>
 
-      {loading ? <Loader /> : lista.length === 0 ? <Empty msg="Nenhum movimento lançado." /> : (
+      {loading ? <Loader /> : lista.length === 0 ? (
+        <Empty msg="Nenhum movimento carregado. Use Buscar ou Todos para listar." />
+      ) : (
         <div className="g-table-wrap">
           <table className="g-table">
-            <thead><tr><th>ID</th><th>Tipo</th><th>Nº NF</th><th>Data NF</th><th>Valor Total</th><th>Lançado em</th><th>Ações</th></tr></thead>
+            <thead><tr>
+              <SortHeader field="id" label="ID" colSort={colSort} colDir={colDir} onSort={handleSort} />
+              <SortHeader field="tipo" label="Tipo" colSort={colSort} colDir={colDir} onSort={handleSort} />
+              <SortHeader field="numero_nf" label="Nº NF" colSort={colSort} colDir={colDir} onSort={handleSort} />
+              <SortHeader field="data_nf" label="Data NF" colSort={colSort} colDir={colDir} onSort={handleSort} />
+              <SortHeader field="valor_total" label="Valor Total" colSort={colSort} colDir={colDir} onSort={handleSort} />
+              <SortHeader field="ativo" label="Status" colSort={colSort} colDir={colDir} onSort={handleSort} />
+              <SortHeader field="criado_em" label="Lançado em" colSort={colSort} colDir={colDir} onSort={handleSort} />
+              <th>Ações</th>
+            </tr></thead>
             <tbody>
               {lista.map(m => (
                 <>
-                  <tr key={m.id}>
+                  <tr key={m.id} className={m.ativo === false ? 'row-dim' : ''}>
                     <td className="td-id">#{m.id}</td>
                     <td><Pill variant={m.tipo === 'APAGAR' ? 'red' : 'green'}>{m.tipo === 'APAGAR' ? 'A PAGAR' : 'A RECEBER'}</Pill></td>
                     <td>{m.numero_nf || '—'}</td>
                     <td>{m.data_nf || '—'}</td>
                     <td className="td-valor">{formatCurrency(m.valor_total)}</td>
+                    <td><Badge ativo={m.ativo !== false} /></td>
                     <td>{m.criado_em ? new Date(m.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
                     <td>
                       <div className="g-row-actions">
@@ -408,7 +860,7 @@ function MovimentosSection({ tipoFiltro }) {
                             </svg>
                           }
                         </button>
-                        <button className="g-action g-action-edit" onClick={() => setModal({ modo: 'editar', dados: m })} title="Editar">
+                        <button className="g-action g-action-edit" onClick={() => abrirEditarModal(m)} title="Editar">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                       </div>
@@ -416,7 +868,7 @@ function MovimentosSection({ tipoFiltro }) {
                   </tr>
                   {detalhe?.id === m.id && (
                     <tr key={`det-${m.id}`} className="row-detalhe-tr">
-                      <td colSpan={7}>
+                      <td colSpan={8}>
                         <div className="mov-detalhe">
                           <div className="mov-det-grid">
                             <div className="mov-det-bloco">

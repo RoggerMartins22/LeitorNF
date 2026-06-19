@@ -59,10 +59,43 @@ const ICONS = {
       <line x1="3" y1="10" x2="21" y2="10"/>
     </svg>
   ),
+  'contas': (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 21h18"/>
+      <path d="M5 21V10l7-5 7 5v11"/>
+      <line x1="9" y1="21" x2="9" y2="13"/>
+      <line x1="15" y1="21" x2="15" y2="13"/>
+      <line x1="12" y1="21" x2="12" y2="13"/>
+    </svg>
+  ),
+  'logout': (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
 };
 
-export default function Sidebar({ secoes, secaoAtiva, collapsed, onToggle, onNavegar }) {
+function papelLabel(papel) {
+  if (!papel) return '';
+  const p = String(papel).toUpperCase();
+  if (p === 'ADMIN') return 'Administrador';
+  if (p === 'OPERADOR') return 'Operador';
+  if (p === 'VIEWER' || p === 'LEITOR') return 'Leitor';
+  return papel;
+}
+
+function papelVariant(papel) {
+  const p = String(papel || '').toUpperCase();
+  if (p === 'ADMIN') return 'pill-purple';
+  if (p === 'OPERADOR') return 'pill-blue';
+  return 'pill-green';
+}
+
+export default function Sidebar({ secoes, secaoAtiva, collapsed, onToggle, onNavegar, usuario, onLogout }) {
   const grupos = [...new Set(secoes.map(s => s.grupo))];
+  const inicial = (usuario?.nome || usuario?.login || '?').trim().charAt(0).toUpperCase();
 
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
@@ -122,9 +155,47 @@ export default function Sidebar({ secoes, secaoAtiva, collapsed, onToggle, onNav
         ))}
       </nav>
 
+      {/* User area */}
+      {usuario && (
+        <div className="sidebar-user">
+          {collapsed ? (
+            <div className="sidebar-user-collapsed">
+              <div className="sidebar-user-avatar" title={usuario.nome || usuario.login}>{inicial}</div>
+              <button
+                className="sidebar-user-logout-mini"
+                onClick={onLogout}
+                title="Sair"
+              >
+                {ICONS['logout']}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="sidebar-user-row">
+                <div className="sidebar-user-avatar">{inicial}</div>
+                <div className="sidebar-user-info">
+                  <div className="sidebar-user-name" title={usuario.nome || usuario.login}>
+                    {usuario.nome || usuario.login}
+                  </div>
+                  {usuario.papel && (
+                    <span className={`sidebar-user-pill ${papelVariant(usuario.papel)}`}>
+                      {papelLabel(usuario.papel)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button className="sidebar-user-logout" onClick={onLogout}>
+                {ICONS['logout']}
+                <span>Sair</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Footer */}
       <div className="sidebar-footer">
-        {!collapsed && <div className="sidebar-footer-text">UniRV © 2025</div>}
+        {!collapsed && <div className="sidebar-footer-text">UniRV © 2026</div>}
       </div>
     </aside>
   );

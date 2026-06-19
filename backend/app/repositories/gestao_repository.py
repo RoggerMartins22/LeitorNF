@@ -115,8 +115,51 @@ class GestaoRepository:
 
     # ── MOVIMENTOS ─────────────────────────────────────────────────────
 
-    def listar_movimentos(self):
-        return self.db.query(MovimentoContas).order_by(MovimentoContas.criado_em.desc()).all()
+    _MOV_ALLOWED_ORDER_BY = {"id", "tipo", "numero_nf", "data_nf", "valor_total", "ativo", "criado_em"}
+    _MOV_ALLOWED_ORDER_DIR = {"asc", "desc"}
+
+    def listar_movimentos(
+        self,
+        q=None,
+        tipo=None,
+        numero_nf=None,
+        ativo=None,
+        order_by: str = "criado_em",
+        order_dir: str = "desc",
+    ):
+        query = self.db.query(MovimentoContas)
+
+        if q:
+            like = f"%{str(q).strip()}%"
+            query = query.filter(MovimentoContas.descricao_produtos.ilike(like))
+
+        if numero_nf:
+            like_nf = f"%{str(numero_nf).strip()}%"
+            query = query.filter(MovimentoContas.numero_nf.ilike(like_nf))
+
+        if tipo is not None:
+            query = query.filter(MovimentoContas.tipo == tipo)
+
+        if ativo is not None:
+            query = query.filter(MovimentoContas.ativo == ativo)
+
+        if order_by not in self._MOV_ALLOWED_ORDER_BY:
+            order_by = "criado_em"
+        if order_dir not in self._MOV_ALLOWED_ORDER_DIR:
+            order_dir = "desc"
+
+        coluna = getattr(MovimentoContas, order_by)
+        query = query.order_by(coluna.desc() if order_dir == "desc" else coluna.asc())
+
+        return query.all()
+
+    def listar_movimentos_ativos(self):
+        return (
+            self.db.query(MovimentoContas)
+            .filter(MovimentoContas.ativo == True)  # noqa: E712
+            .order_by(MovimentoContas.criado_em.desc())
+            .all()
+        )
 
     def get_movimento(self, id):
         return self.db.query(MovimentoContas).filter(MovimentoContas.id == id).first()

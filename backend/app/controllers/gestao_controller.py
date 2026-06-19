@@ -4,8 +4,15 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.repositories.gestao_repository import GestaoRepository
+from app.repositories.pessoas_repository import PessoasRepository
+from app.repositories.classificacao_repository import ClassificacaoRepository
+from app.services.auth_service import get_current_user
 
-router = APIRouter(prefix="/api/gestao", tags=["gestao"])
+router = APIRouter(
+    prefix="/api/gestao",
+    tags=["gestao"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 # ── Schemas ─────────────────────────────────────────────────────────────
@@ -65,14 +72,32 @@ def _fmt_mov(m):
     return {"id": m.id, "tipo": m.tipo, "numero_nf": m.numero_nf,
             "data_nf": m.data_nf, "valor_total": m.valor_total,
             "descricao_produtos": m.descricao_produtos, "pessoa_id": m.pessoa_id,
-            "faturado_id": m.faturado_id, "criado_em": m.criado_em}
+            "faturado_id": m.faturado_id, "ativo": getattr(m, "ativo", True),
+            "criado_em": m.criado_em}
 
 
 # ── PESSOAS ────────────────────────────────────────────────────────────
 
 @router.get("/pessoas")
-def listar_pessoas(db: Session = Depends(get_db)):
-    return [_fmt_pessoa(p) for p in GestaoRepository(db).listar_pessoas()]
+def listar_pessoas(
+    q: Optional[str] = None,
+    tipo: Optional[str] = None,
+    ativo: Optional[bool] = None,
+    documento: Optional[str] = None,
+    order_by: str = "criado_em",
+    order_dir: str = "desc",
+    db: Session = Depends(get_db),
+):
+    pessoas = PessoasRepository(db).listar(
+        q=q, tipo=tipo, ativo=ativo, documento=documento,
+        order_by=order_by, order_dir=order_dir,
+    )
+    return [_fmt_pessoa(p) for p in pessoas]
+
+
+@router.get("/pessoas/todos")
+def listar_pessoas_ativas(db: Session = Depends(get_db)):
+    return [_fmt_pessoa(p) for p in PessoasRepository(db).listar_ativos()]
 
 @router.post("/pessoas", status_code=201)
 def criar_pessoa(body: PessoaCreate, db: Session = Depends(get_db)):
@@ -114,8 +139,23 @@ def system_delete_pessoa(id: int, db: Session = Depends(get_db)):
 # ── CLASSIFICAÇÕES ─────────────────────────────────────────────────────
 
 @router.get("/classificacoes")
-def listar_classificacoes(db: Session = Depends(get_db)):
-    return [_fmt_clf(c) for c in GestaoRepository(db).listar_classificacoes()]
+def listar_classificacoes(
+    q: Optional[str] = None,
+    tipo: Optional[str] = None,
+    ativo: Optional[bool] = None,
+    order_by: str = "criado_em",
+    order_dir: str = "desc",
+    db: Session = Depends(get_db),
+):
+    classificacoes = ClassificacaoRepository(db).listar(
+        q=q, tipo=tipo, ativo=ativo, order_by=order_by, order_dir=order_dir
+    )
+    return [_fmt_clf(c) for c in classificacoes]
+
+
+@router.get("/classificacoes/todos")
+def listar_classificacoes_ativas(db: Session = Depends(get_db)):
+    return [_fmt_clf(c) for c in ClassificacaoRepository(db).listar_ativos()]
 
 @router.post("/classificacoes", status_code=201)
 def criar_classificacao(body: ClassificacaoCreate, db: Session = Depends(get_db)):
@@ -156,8 +196,24 @@ def system_delete_classificacao(id: int, db: Session = Depends(get_db)):
 # ── MOVIMENTOS ─────────────────────────────────────────────────────────
 
 @router.get("/movimentos")
-def listar_movimentos(db: Session = Depends(get_db)):
-    return [_fmt_mov(m) for m in GestaoRepository(db).listar_movimentos()]
+def listar_movimentos(
+    q: Optional[str] = None,
+    tipo: Optional[str] = None,
+    numero_nf: Optional[str] = None,
+    ativo: Optional[bool] = None,
+    order_by: str = "criado_em",
+    order_dir: str = "desc",
+    db: Session = Depends(get_db),
+):
+    movimentos = GestaoRepository(db).listar_movimentos(
+        q=q, tipo=tipo, numero_nf=numero_nf, ativo=ativo,
+        order_by=order_by, order_dir=order_dir,
+    )
+    return [_fmt_mov(m) for m in movimentos]
+
+@router.get("/movimentos/todos")
+def listar_movimentos_ativos(db: Session = Depends(get_db)):
+    return [_fmt_mov(m) for m in GestaoRepository(db).listar_movimentos_ativos()]
 
 @router.get("/movimentos/{id}")
 def detalhe_movimento(id: int, db: Session = Depends(get_db)):

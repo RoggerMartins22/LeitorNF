@@ -10,6 +10,65 @@
   flex-wrap: wrap;
 }
 
+/* Linha horizontal de filtros (selects e inputs juntos) */
+.g-filters-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+/* Select inline usado nos filtros da toolbar */
+.g-filter-select {
+  padding: 7px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  min-width: 140px;
+}
+.g-filter-select:focus { border-color: var(--primary); }
+
+/* Input inline usado nos filtros da toolbar */
+.g-filter-input {
+  padding: 7px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  min-width: 160px;
+}
+.g-filter-input:focus { border-color: var(--primary); }
+.g-filter-input::placeholder { color: var(--text-muted); }
+
+/* Botão "Limpar" (neutro, secundário) */
+.g-btn-clear {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.g-btn-clear:hover { background: var(--bg); border-color: var(--text-muted); }
+
 .g-count {
   font-size: 0.8rem;
   color: var(--text-muted);
