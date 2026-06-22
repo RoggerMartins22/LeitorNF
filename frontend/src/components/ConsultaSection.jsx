@@ -185,6 +185,11 @@ export default function ConsultaSection() {
                             })}
                           </span>
                         )}
+                        {f.tipo && (
+                          <span className={`rag-chip-tipo ${f.tipo === 'APAGAR' ? 'apagar' : 'areceber'}`}>
+                            {f.tipo === 'APAGAR' ? 'A PAGAR' : 'A RECEBER'}
+                          </span>
+                        )}
                       </div>
                       {f.descricao && (
                         <div className="rag-fonte-desc">{f.descricao}</div>

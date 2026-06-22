@@ -149,6 +149,7 @@ def _item_para_fonte(item: dict) -> dict:
         "numero_nf": mov.numero_nf,
         "fornecedor": fornecedor.razao_social if fornecedor else None,
         "valor": mov.valor_total,
+        "tipo": mov.tipo,
         "data_nf": mov.data_nf,
         "descricao": (mov.descricao_produtos or "")[:120],
     }

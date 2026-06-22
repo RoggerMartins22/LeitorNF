@@ -363,6 +363,23 @@
   font-weight: 600;
 }
 
+.rag-chip-tipo {
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.rag-chip-tipo.apagar {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+.rag-chip-tipo.areceber {
+  background: var(--primary-surface);
+  border: 1px solid var(--primary-border);
+  color: var(--primary);
+}
+
 .rag-fonte-desc {
   font-size: 0.78rem;
   color: var(--text-muted);
