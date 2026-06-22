@@ -118,10 +118,19 @@ export default function ConsultaSection() {
             <IconVetor size={13} />
             RAG Embeddings
           </button>
+          <button
+            className={`rag-mode-btn ${modo === 'analitico' ? 'ativo' : ''}`}
+            onClick={() => setModo('analitico')}
+          >
+            <IconChart size={13} />
+            RAG Analítico
+          </button>
         </div>
         <span className="rag-mode-desc">
           {modo === 'simples'
             ? 'Recuperação por palavras-chave via busca textual no banco'
+            : modo === 'analitico'
+            ? 'Analisa o banco completo — ideal para "maior valor", totais, rankings e parcelas vencidas'
             : 'Recuperação semântica por similaridade de cosseno entre vetores'}
         </span>
       </div>
@@ -215,7 +224,7 @@ export default function ConsultaSection() {
               <IconSparkle />
               <span>Resposta da IA</span>
               <span className={`rag-badge-modo ${resultado.modo}`}>
-                {resultado.modo === 'simples' ? 'RAG Simples' : 'RAG Embeddings'}
+                {resultado.modo === 'simples' ? 'RAG Simples' : resultado.modo === 'analitico' ? 'RAG Analítico' : 'RAG Embeddings'}
               </span>
             </div>
             <div className="rag-resposta-texto">{resultado.resposta}</div>
@@ -279,7 +288,7 @@ export default function ConsultaSection() {
               >
                 <span className="rag-historico-pergunta">{h.pergunta}</span>
                 <span className={`rag-badge-modo mini ${h.modo}`}>
-                  {h.modo === 'simples' ? 'Simples' : 'Embeddings'}
+                  {h.modo === 'simples' ? 'Simples' : h.modo === 'analitico' ? 'Analítico' : 'Embeddings'}
                 </span>
               </button>
             ))}
@@ -386,6 +395,16 @@ function IconRefresh({ size = 16 }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="23 4 23 10 17 10" />
       <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+    </svg>
+  );
+}
+
+function IconChart({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   );
 }

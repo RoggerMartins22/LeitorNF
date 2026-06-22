@@ -1,23 +1,42 @@
-# NOTA Etapa 4: rota intencionalmente não protegida — decisão registrada no AUDIT.md.
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+import logging
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.services.extraction_service import ExtractionService
+from app.models.usuario import Usuario
 from app.schemas.nota_fiscal import NotaFiscalExtraida
+from app.services.auth_service import get_current_user
+from app.services.extraction_service import ExtractionService
+
+logger = logging.getLogger(__name__)
+
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 
 router = APIRouter(prefix="/api", tags=["extractor"])
 
 
 @router.post("/extract", response_model=NotaFiscalExtraida)
-async def extract(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def extract(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _current_user: Usuario = Depends(get_current_user),
+):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Apenas arquivos PDF são aceitos.")
 
     pdf_bytes = await file.read()
 
+    if len(pdf_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Arquivo muito grande. Limite: 10 MB.")
+
+    if not pdf_bytes.startswith(b"%PDF-"):
+        raise HTTPException(status_code=400, detail="O arquivo enviado não é um PDF válido.")
+
     try:
         service = ExtractionService(db)
         result = service.process_pdf(filename=file.filename, pdf_bytes=pdf_bytes)
         return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao processar com Gemini: {str(e)}")
+    except Exception:
+        logger.exception("Erro ao processar PDF")
+        raise HTTPException(status_code=500, detail="Erro interno ao processar o arquivo. Tente novamente.")

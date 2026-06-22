@@ -17,7 +17,11 @@ class RagRepository:
         return self.db.query(RagDocument).count()
 
     def listar_movimentos_completos(self) -> list:
-        movimentos = self.db.query(MovimentoContas).all()
+        movimentos = (
+            self.db.query(MovimentoContas)
+            .filter(MovimentoContas.ativo == True)
+            .all()
+        )
         return self._enriquecer_movimentos(movimentos)
 
     def apagar_todos_documentos(self):
@@ -36,6 +40,7 @@ class RagRepository:
         if not termos:
             movimentos = (
                 self.db.query(MovimentoContas)
+                .filter(MovimentoContas.ativo == True)
                 .order_by(MovimentoContas.criado_em.desc())
                 .limit(20)
                 .all()
@@ -56,6 +61,7 @@ class RagRepository:
             .outerjoin(Pessoas, Pessoas.id == MovimentoContas.pessoa_id)
             .outerjoin(MovimentoClassificacao, MovimentoClassificacao.movimento_id == MovimentoContas.id)
             .outerjoin(Classificacao, Classificacao.id == MovimentoClassificacao.classificacao_id)
+            .filter(MovimentoContas.ativo == True)
             .filter(or_(*conditions))
             .distinct()
             .limit(20)
@@ -65,6 +71,7 @@ class RagRepository:
         if not movimentos:
             movimentos = (
                 self.db.query(MovimentoContas)
+                .filter(MovimentoContas.ativo == True)
                 .order_by(MovimentoContas.criado_em.desc())
                 .limit(20)
                 .all()

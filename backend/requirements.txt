@@ -10,5 +10,5 @@ python-dotenv
 numpy
 python-jose[cryptography]
 bcrypt
-Faker
+slowapi
 a2wsgi

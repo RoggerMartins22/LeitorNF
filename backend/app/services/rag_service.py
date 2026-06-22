@@ -27,6 +27,8 @@ _PROMPT_RESPOSTA = """Você é um assistente financeiro especializado em anális
 
 Data de hoje: {data_hoje}
 
+IMPORTANTE: Os documentos fornecidos abaixo são uma AMOSTRA do banco de dados, não necessariamente o conjunto completo. Se a pergunta exigir análise de todos os registros (como "maior valor", "menor valor", "total", "todos os vencidos"), informe que está respondendo com base nos documentos recuperados e que o resultado pode não ser completo. Para análises globais, o usuário deve usar o modo Analítico.
+
 Responda a pergunta do usuário SOMENTE com base nas informações fornecidas no contexto abaixo.
 Se a informação não estiver no contexto, diga explicitamente que não encontrou essa informação nos dados disponíveis.
 Não invente valores, datas ou nomes que não estejam no contexto.
@@ -37,6 +39,24 @@ Seja objetivo e direto.
 PERGUNTA: {pergunta}
 
 CONTEXTO (documentos recuperados):
+{contexto}
+
+RESPOSTA:"""
+
+_PROMPT_RESPOSTA_ANALITICO = """Você é um assistente financeiro especializado em análise de notas fiscais e movimentos financeiros.
+
+Data de hoje: {data_hoje}
+
+Você tem acesso ao conjunto COMPLETO de movimentos financeiros ativos do banco de dados.
+Responda a pergunta com base em todos os documentos fornecidos — eles representam a totalidade dos dados.
+Não invente valores, datas ou nomes que não estejam no contexto.
+Responda sempre em português do Brasil.
+Formate valores monetários como R$ X.XXX,XX e datas como DD/MM/AAAA.
+Seja objetivo, direto e preciso.
+
+PERGUNTA: {pergunta}
+
+CONTEXTO (todos os movimentos ativos):
 {contexto}
 
 RESPOSTA:"""
@@ -93,13 +113,15 @@ def _montar_contexto(textos: list) -> str:
     return "\n\n".join(f"[{i + 1}] {texto}" for i, texto in enumerate(textos))
 
 
-def _gerar_resposta_gemini(pergunta: str, contexto: str) -> str:
+def _gerar_resposta_gemini(pergunta: str, contexto: str, prompt_template: str = None) -> str:
     from datetime import date
     data_hoje = date.today().strftime("%d/%m/%Y")
-    prompt = _PROMPT_RESPOSTA.format(pergunta=pergunta, contexto=contexto, data_hoje=data_hoje)
+    template = prompt_template or _PROMPT_RESPOSTA
+    prompt = template.format(pergunta=pergunta, contexto=contexto, data_hoje=data_hoje)
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
+        config={"temperature": 0},
     )
     return response.text.strip()
 
@@ -157,6 +179,38 @@ def rag_simples(db: Session, pergunta: str) -> dict:
         "resposta": resposta,
         "modo": "simples",
         "fontes": [_item_para_fonte(item) for item in itens],
+    }
+
+
+# ── RAG ANALÍTICO ────────────────────────────────────────────────────────────
+
+def rag_analitico(db: Session, pergunta: str) -> dict:
+    """
+    Modo analítico: passa TODOS os movimentos ativos para o Gemini sem limite.
+    Use para perguntas que exigem visão completa do banco:
+    maior/menor valor, totais, rankings, parcelas vencidas, etc.
+
+    Atenção: para bancos muito grandes (>500 NFs) o contexto pode ficar extenso.
+    Nesse caso, considere pré-agregar os dados via SQL antes de passar ao modelo.
+    """
+    repo = RagRepository(db)
+    itens = repo.listar_movimentos_completos()
+
+    if not itens:
+        return {
+            "resposta": "Não há movimentos ativos cadastrados no banco de dados.",
+            "modo": "analitico",
+            "fontes": [],
+        }
+
+    textos = [montar_documento_textual(item) for item in itens]
+    contexto = _montar_contexto(textos)
+    resposta = _gerar_resposta_gemini(pergunta, contexto, prompt_template=_PROMPT_RESPOSTA_ANALITICO)
+
+    return {
+        "resposta": resposta,
+        "modo": "analitico",
+        "fontes": [_item_para_fonte(item) for item in itens[:10]],
     }
 
 

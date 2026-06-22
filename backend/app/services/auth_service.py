@@ -69,17 +69,3 @@ def get_current_user(
     return usuario
 
 
-def seed_usuario_admin(db: Session) -> None:
-    """Cria o usuário coordenador inicial se ainda não houver nenhum usuário cadastrado."""
-    if db.query(Usuario).count() > 0:
-        return
-
-    admin = Usuario(
-        nome="Coordenador",
-        login="coordenador",
-        senha_hash=criar_hash("UniRV@2026"),
-        papel="COORDENADOR",
-        ativo=True,
-    )
-    db.add(admin)
-    db.commit()
