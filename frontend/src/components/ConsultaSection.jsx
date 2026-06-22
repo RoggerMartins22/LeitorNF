@@ -230,12 +230,16 @@ export default function ConsultaSection() {
             <div className="rag-resposta-texto">{resultado.resposta}</div>
           </div>
 
-          {/* Fontes */}
+          {/* Fontes / NFs mencionadas */}
           {resultado.fontes && resultado.fontes.length > 0 && (
             <div className="rag-fontes-card">
               <div className="rag-fontes-header">
                 <IconFile />
-                <span>Fontes utilizadas ({resultado.fontes.length})</span>
+                {resultado.modo === 'analitico' ? (
+                  <span>NFs mencionadas na resposta ({resultado.fontes.length})</span>
+                ) : (
+                  <span>Fontes utilizadas ({resultado.fontes.length})</span>
+                )}
               </div>
               <div className="rag-fontes-lista">
                 {resultado.fontes.map((f, i) => (
@@ -266,6 +270,20 @@ export default function ConsultaSection() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Rodapé analítico */}
+          {resultado.modo === 'analitico' && resultado.total_analisado != null && (
+            <div className="rag-analitico-footer">
+              <IconInfo />
+              <span>
+                Resposta baseada na análise de{' '}
+                <strong>{resultado.total_analisado}</strong> nota(s) fiscal(is) ativa(s)
+                {resultado.fontes && resultado.fontes.length > 0
+                  ? ` · ${resultado.fontes.length} mencionada(s) explicitamente`
+                  : ''}
+              </span>
             </div>
           )}
         </div>

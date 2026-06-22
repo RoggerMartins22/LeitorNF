@@ -36,6 +36,20 @@ class RagRepository:
     def listar_documentos(self) -> list:
         return self.db.query(RagDocument).all()
 
+    def buscar_por_numeros_nf(self, numeros: list) -> list:
+        """Busca movimentos ativos pelos números de NF informados."""
+        if not numeros:
+            return []
+        movimentos = (
+            self.db.query(MovimentoContas)
+            .filter(
+                MovimentoContas.ativo == True,
+                MovimentoContas.numero_nf.in_(numeros),
+            )
+            .all()
+        )
+        return self._enriquecer_movimentos(movimentos)
+
     def buscar_por_termos(self, termos: list) -> list:
         if not termos:
             movimentos = (

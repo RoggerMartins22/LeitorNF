@@ -113,6 +113,26 @@ def _montar_contexto(textos: list) -> str:
     return "\n\n".join(f"[{i + 1}] {texto}" for i, texto in enumerate(textos))
 
 
+import re
+
+def _extrair_nfs_mencionadas(texto: str) -> list:
+    """
+    Extrai números de NF mencionados no texto da resposta do Gemini.
+    Padrões reconhecidos: #100054, NF 100054, NF#100054, Nota Fiscal 100054
+    Retorna lista de strings com os números encontrados (sem #, sem espaços).
+    """
+    padroes = [
+        r'#(\d{4,})',
+        r'NF\s*#?\s*(\d{4,})',
+        r'[Nn]ota\s+[Ff]iscal\s+#?\s*(\d{4,})',
+    ]
+    encontrados = set()
+    for padrao in padroes:
+        for match in re.finditer(padrao, texto):
+            encontrados.add(match.group(1))
+    return list(encontrados)
+
+
 def _gerar_resposta_gemini(pergunta: str, contexto: str, prompt_template: str = None) -> str:
     from datetime import date
     data_hoje = date.today().strftime("%d/%m/%Y")
@@ -207,10 +227,14 @@ def rag_analitico(db: Session, pergunta: str) -> dict:
     contexto = _montar_contexto(textos)
     resposta = _gerar_resposta_gemini(pergunta, contexto, prompt_template=_PROMPT_RESPOSTA_ANALITICO)
 
+    nfs_mencionadas = _extrair_nfs_mencionadas(resposta)
+    itens_mencionados = repo.buscar_por_numeros_nf(nfs_mencionadas) if nfs_mencionadas else []
+
     return {
         "resposta": resposta,
         "modo": "analitico",
-        "fontes": [_item_para_fonte(item) for item in itens[:10]],
+        "fontes": [_item_para_fonte(item) for item in itens_mencionados],
+        "total_analisado": len(itens),
     }
 
 
