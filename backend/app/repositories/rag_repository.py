@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from app.models.rag_document import RagDocument
 from app.models.movimento import MovimentoContas, MovimentoClassificacao, ParcelaContas
 from app.models.pessoas import Pessoas
 from app.models.classificacao import Classificacao
@@ -10,12 +9,6 @@ class RagRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def count_movimentos(self) -> int:
-        return self.db.query(MovimentoContas).count()
-
-    def count_documentos(self) -> int:
-        return self.db.query(RagDocument).count()
-
     def listar_movimentos_completos(self) -> list:
         movimentos = (
             self.db.query(MovimentoContas)
@@ -23,18 +16,6 @@ class RagRepository:
             .all()
         )
         return self._enriquecer_movimentos(movimentos)
-
-    def apagar_todos_documentos(self):
-        self.db.query(RagDocument).delete()
-        self.db.commit()
-
-    def salvar_documento(self, movimento_id: int, conteudo: str, embedding_json: str):
-        doc = RagDocument(movimento_id=movimento_id, conteudo=conteudo, embedding=embedding_json)
-        self.db.add(doc)
-        self.db.commit()
-
-    def listar_documentos(self) -> list:
-        return self.db.query(RagDocument).all()
 
     def buscar_por_numeros_nf(self, numeros: list) -> list:
         """Busca movimentos ativos pelos números de NF informados."""

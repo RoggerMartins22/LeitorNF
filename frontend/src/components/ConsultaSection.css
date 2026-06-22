@@ -90,63 +90,6 @@
   font-style: italic;
 }
 
-/* ── Indexar bar ────────────────────────────────────────────────────────── */
-.rag-indexar-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: var(--primary-surface);
-  border: 1px solid var(--primary-border);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-}
-.rag-indexar-bar.desatualizado {
-  background: var(--warning-bg);
-  border-color: var(--warning-border);
-}
-
-.rag-status-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  color: var(--text-secondary);
-}
-
-.rag-warn-tag {
-  color: var(--warning);
-  font-weight: 600;
-}
-
-.rag-btn-indexar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  font-family: inherit;
-  white-space: nowrap;
-}
-.rag-btn-indexar:hover:not(:disabled) { background: var(--primary-dark); }
-.rag-btn-indexar:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.rag-msg-indexar {
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-.rag-msg-indexar.sucesso { color: var(--success); }
-.rag-msg-indexar.erro    { color: var(--danger); }
-
 /* ── Query card ─────────────────────────────────────────────────────────── */
 .rag-query-card {
   background: var(--surface);

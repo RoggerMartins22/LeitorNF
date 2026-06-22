@@ -1,11 +1,8 @@
-import json
-import numpy as np
+import re
 from google import genai
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.repositories.rag_repository import RagRepository
-from app.models.movimento import MovimentoContas
-from app.models.pessoas import Pessoas
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
@@ -113,8 +110,6 @@ def _montar_contexto(textos: list) -> str:
     return "\n\n".join(f"[{i + 1}] {texto}" for i, texto in enumerate(textos))
 
 
-import re
-
 def _extrair_nfs_mencionadas(texto: str) -> list:
     """
     Extrai números de NF mencionados no texto da resposta do Gemini.
@@ -157,24 +152,6 @@ def _item_para_fonte(item: dict) -> dict:
         "data_nf": mov.data_nf,
         "descricao": (mov.descricao_produtos or "")[:120],
     }
-
-
-def _gerar_embedding(texto: str, task_type: str = "retrieval_document") -> list:
-    result = client.models.embed_content(
-        model="gemini-embedding-001",
-        contents=texto,
-        config={"task_type": task_type},
-    )
-    return list(result.embeddings[0].values)
-
-
-def _cosseno(a: list, b: list) -> float:
-    va = np.array(a, dtype=np.float32)
-    vb = np.array(b, dtype=np.float32)
-    norma = float(np.linalg.norm(va)) * float(np.linalg.norm(vb))
-    if norma == 0.0:
-        return 0.0
-    return float(np.dot(va, vb) / norma)
 
 
 # ── RAG SIMPLES ──────────────────────────────────────────────────────────────
@@ -238,127 +215,3 @@ def rag_analitico(db: Session, pergunta: str) -> dict:
     }
 
 
-# ── RAG EMBEDDINGS ───────────────────────────────────────────────────────────
-
-def indexar(db: Session) -> dict:
-    import time
-
-    repo = RagRepository(db)
-    itens = repo.listar_movimentos_completos()
-
-    # IDs já indexados — só processa os novos
-    ja_indexados = {doc.movimento_id for doc in repo.listar_documentos()}
-    pendentes = [item for item in itens if item["movimento"].id not in ja_indexados]
-
-    count = 0
-    erros = 0
-    MAX_TENTATIVAS = 4
-
-    for item in pendentes:
-        texto = montar_documento_textual(item)
-        embedding = None
-
-        for tentativa in range(1, MAX_TENTATIVAS + 1):
-            try:
-                embedding = _gerar_embedding(texto, task_type="retrieval_document")
-                break
-            except Exception as e:
-                msg = str(e).lower()
-                quota_esgotada = "quota" in msg or "429" in msg or "resource_exhausted" in msg
-                if quota_esgotada and tentativa < MAX_TENTATIVAS:
-                    espera = 2 ** tentativa  # 2s, 4s, 8s
-                    time.sleep(espera)
-                else:
-                    erros += 1
-                    embedding = None
-                    break
-
-        if embedding is not None:
-            repo.salvar_documento(item["movimento"].id, texto, json.dumps(embedding))
-            count += 1
-
-        # Pausa leve entre requisições para não estourar RPM
-        time.sleep(0.1)
-
-    total_indexados = len(ja_indexados) + count
-    msg = f"{count} novo(s) documento(s) indexado(s). Total: {total_indexados}."
-    if erros:
-        msg += f" {erros} erro(s) — cota possivelmente esgotada, tente novamente mais tarde."
-
-    return {
-        "indexados": total_indexados,
-        "novos": count,
-        "erros": erros,
-        "mensagem": msg,
-    }
-
-
-def rag_embeddings(db: Session, pergunta: str) -> dict:
-    repo = RagRepository(db)
-    documentos = repo.listar_documentos()
-
-    if not documentos:
-        return {
-            "resposta": (
-                "O índice de embeddings está vazio. "
-                "Clique em 'Indexar base' para indexar os movimentos antes de usar este modo."
-            ),
-            "modo": "embeddings",
-            "fontes": [],
-        }
-
-    embedding_pergunta = _gerar_embedding(pergunta, task_type="retrieval_query")
-
-    scored = []
-    for doc in documentos:
-        if not doc.embedding:
-            continue
-        score = _cosseno(embedding_pergunta, json.loads(doc.embedding))
-        scored.append((score, doc))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top5 = scored[:5]
-
-    if not top5:
-        return {
-            "resposta": "Não foi possível calcular similaridade. Tente reindexar a base.",
-            "modo": "embeddings",
-            "fontes": [],
-        }
-
-    textos = [doc.conteudo for _, doc in top5]
-    contexto = _montar_contexto(textos)
-    resposta = _gerar_resposta_gemini(pergunta, contexto)
-
-    fontes = []
-    for _, doc in top5:
-        mov = db.query(MovimentoContas).filter(MovimentoContas.id == doc.movimento_id).first()
-        if mov:
-            fornecedor = (
-                db.query(Pessoas).filter(Pessoas.id == mov.pessoa_id).first()
-                if mov.pessoa_id else None
-            )
-            fontes.append({
-                "id": mov.id,
-                "numero_nf": mov.numero_nf,
-                "fornecedor": fornecedor.razao_social if fornecedor else None,
-                "valor": mov.valor_total,
-                "data_nf": mov.data_nf,
-                "descricao": (mov.descricao_produtos or "")[:120],
-            })
-
-    return {
-        "resposta": resposta,
-        "modo": "embeddings",
-        "fontes": fontes,
-    }
-
-
-# ── STATUS ────────────────────────────────────────────────────────────────────
-
-def get_status(db: Session) -> dict:
-    repo = RagRepository(db)
-    return {
-        "movimentos_banco": repo.count_movimentos(),
-        "documentos_indexados": repo.count_documentos(),
-    }

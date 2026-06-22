@@ -7,7 +7,6 @@ pydantic-settings
 sqlalchemy
 psycopg2-binary
 python-dotenv
-numpy
 python-jose[cryptography]
 bcrypt
 slowapi

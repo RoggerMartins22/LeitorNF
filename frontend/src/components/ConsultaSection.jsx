@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { perguntarRAG, indexarRAG, statusRAG, parsearErroAPI } from '../services/api';
+import { useState, useRef } from 'react';
+import { perguntarRAG, parsearErroAPI } from '../services/api';
 import './ConsultaSection.css';
 
 const SUGESTOES = [
@@ -17,41 +17,8 @@ export default function ConsultaSection() {
   const [resultado, setResultado] = useState(null);
   const [erro, setErro] = useState(null);
   const [historico, setHistorico] = useState([]);
-  const [status, setStatus] = useState(null);
-  const [indexando, setIndexando] = useState(false);
-  const [msgIndexar, setMsgIndexar] = useState(null);
   const textareaRef = useRef(null);
   const resultadoRef = useRef(null);
-
-  useEffect(() => {
-    if (modo === 'embeddings') carregarStatus();
-  }, [modo]);
-
-  const carregarStatus = async () => {
-    try {
-      const s = await statusRAG();
-      setStatus(s);
-    } catch {
-      setStatus(null);
-    }
-  };
-
-  const handleIndexar = async () => {
-    setIndexando(true);
-    setMsgIndexar(null);
-    try {
-      const r = await indexarRAG();
-      setMsgIndexar({ tipo: 'sucesso', texto: r.mensagem });
-      carregarStatus();
-    } catch (e) {
-      setMsgIndexar({
-        tipo: 'erro',
-        texto: parsearErroAPI(e),
-      });
-    } finally {
-      setIndexando(false);
-    }
-  };
 
   const handlePerguntar = async () => {
     if (!pergunta.trim()) return;
@@ -83,8 +50,6 @@ export default function ConsultaSection() {
     setErro(null);
   };
 
-  const indexeDesatualizado = status && status.documentos_indexados < status.movimentos_banco;
-
   return (
     <div className="rag-section">
 
@@ -96,7 +61,7 @@ export default function ConsultaSection() {
         <div>
           <h2 className="rag-header-title">Consulta IA (RAG)</h2>
           <p className="rag-header-sub">
-            Faça perguntas em linguagem natural sobre seus dados financeiros e receba respostas geradas pelo Gemini.
+            Faça perguntas em linguagem natural sobre seus dados financeiros — Simples (busca textual) ou Analítico (visão completa do banco).
           </p>
         </div>
       </div>
@@ -112,13 +77,6 @@ export default function ConsultaSection() {
             RAG Simples
           </button>
           <button
-            className={`rag-mode-btn ${modo === 'embeddings' ? 'ativo' : ''}`}
-            onClick={() => setModo('embeddings')}
-          >
-            <IconVetor size={13} />
-            RAG Embeddings
-          </button>
-          <button
             className={`rag-mode-btn ${modo === 'analitico' ? 'ativo' : ''}`}
             onClick={() => setModo('analitico')}
           >
@@ -129,44 +87,9 @@ export default function ConsultaSection() {
         <span className="rag-mode-desc">
           {modo === 'simples'
             ? 'Recuperação por palavras-chave via busca textual no banco'
-            : modo === 'analitico'
-            ? 'Analisa todas as notas ativas do banco — use para comparações, totais, rankings e parcelas vencidas'
-            : 'Recuperação semântica por similaridade de cosseno entre vetores'}
+            : 'Analisa todas as notas ativas do banco — use para comparações, totais, rankings e parcelas vencidas'}
         </span>
       </div>
-
-      {/* ── Barra de indexação (só no modo embeddings) ───────────────────── */}
-      {modo === 'embeddings' && (
-        <div className={`rag-indexar-bar ${indexeDesatualizado ? 'desatualizado' : ''}`}>
-          <div className="rag-status-info">
-            <IconInfo />
-            {status ? (
-              <span>
-                <strong>{status.documentos_indexados}</strong> de{' '}
-                <strong>{status.movimentos_banco}</strong> movimento(s) indexado(s)
-                {indexeDesatualizado && (
-                  <span className="rag-warn-tag"> — índice desatualizado</span>
-                )}
-              </span>
-            ) : (
-              <span>Carregando status do índice...</span>
-            )}
-          </div>
-          <button
-            className="rag-btn-indexar"
-            onClick={handleIndexar}
-            disabled={indexando}
-          >
-            {indexando ? <span className="rag-spinner" /> : <IconRefresh size={13} />}
-            {indexando ? 'Indexando…' : 'Indexar base'}
-          </button>
-          {msgIndexar && (
-            <span className={`rag-msg-indexar ${msgIndexar.tipo}`}>
-              {msgIndexar.texto}
-            </span>
-          )}
-        </div>
-      )}
 
       {/* ── Área de consulta ────────────────────────────────────────────── */}
       <div className="rag-query-card">
@@ -224,7 +147,7 @@ export default function ConsultaSection() {
               <IconSparkle />
               <span>Resposta da IA</span>
               <span className={`rag-badge-modo ${resultado.modo}`}>
-                {resultado.modo === 'simples' ? 'RAG Simples' : resultado.modo === 'analitico' ? 'RAG Analítico' : 'RAG Embeddings'}
+                {resultado.modo === 'simples' ? 'RAG Simples' : 'RAG Analítico'}
               </span>
             </div>
             <div className="rag-resposta-texto">{resultado.resposta}</div>
@@ -306,7 +229,7 @@ export default function ConsultaSection() {
               >
                 <span className="rag-historico-pergunta">{h.pergunta}</span>
                 <span className={`rag-badge-modo mini ${h.modo}`}>
-                  {h.modo === 'simples' ? 'Simples' : h.modo === 'analitico' ? 'Analítico' : 'Embeddings'}
+                  {h.modo === 'simples' ? 'Simples' : 'Analítico'}
                 </span>
               </button>
             ))}
@@ -336,18 +259,6 @@ function IconSearch({ size = 16 }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function IconVetor({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="5" cy="12" r="2" />
-      <circle cx="19" cy="5" r="2" />
-      <circle cx="19" cy="19" r="2" />
-      <line x1="7" y1="12" x2="17" y2="6" />
-      <line x1="7" y1="12" x2="17" y2="18" />
     </svg>
   );
 }
@@ -404,15 +315,6 @@ function IconAlerta() {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  );
-}
-
-function IconRefresh({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="23 4 23 10 17 10" />
-      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
     </svg>
   );
 }

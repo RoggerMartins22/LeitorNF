@@ -107,12 +107,6 @@ export const getParcelas = () => api.get('/api/gestao/parcelas').then(r => r.dat
 export const perguntarRAG = (pergunta, modo) =>
   api.post('/api/rag/perguntar', { pergunta, modo }).then(r => r.data);
 
-export const indexarRAG = () =>
-  api.post('/api/rag/indexar').then(r => r.data);
-
-export const statusRAG = () =>
-  api.get('/api/rag/status').then(r => r.data);
-
 // ── AUTH ─────────────────────────────────────────────────────────────────
 export const login = (loginValue, senha) =>
   api.post('/api/auth/login', { login: loginValue, senha }).then(r => r.data);

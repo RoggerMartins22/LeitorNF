@@ -19,42 +19,22 @@ router = APIRouter(
 
 class PerguntaRequest(BaseModel):
     pergunta: str
-    modo: str  # "simples" | "embeddings" | "analitico"
+    modo: str  # "simples" | "analitico"
 
 
 @router.post("/perguntar")
 def perguntar(body: PerguntaRequest, db: Session = Depends(get_db)):
     if not body.pergunta.strip():
         raise HTTPException(status_code=400, detail="A pergunta não pode ser vazia.")
-    if body.modo not in ("simples", "embeddings", "analitico"):
+    if body.modo not in ("simples", "analitico"):
         raise HTTPException(
             status_code=400,
-            detail="Modo deve ser 'simples', 'embeddings' ou 'analitico'.",
+            detail="Modo deve ser 'simples' ou 'analitico'.",
         )
     try:
         if body.modo == "simples":
             return rag_service.rag_simples(db, body.pergunta)
-        if body.modo == "analitico":
-            return rag_service.rag_analitico(db, body.pergunta)
-        return rag_service.rag_embeddings(db, body.pergunta)
+        return rag_service.rag_analitico(db, body.pergunta)
     except Exception:
         logger.exception("Erro ao processar consulta RAG")
         raise HTTPException(status_code=500, detail="Erro interno ao processar a consulta. Tente novamente.")
-
-
-@router.post("/indexar")
-def indexar(db: Session = Depends(get_db)):
-    try:
-        return rag_service.indexar(db)
-    except Exception:
-        logger.exception("Erro ao indexar documentos RAG")
-        raise HTTPException(status_code=500, detail="Erro interno ao indexar documentos. Tente novamente.")
-
-
-@router.get("/status")
-def status(db: Session = Depends(get_db)):
-    try:
-        return rag_service.get_status(db)
-    except Exception:
-        logger.exception("Erro ao consultar status RAG")
-        raise HTTPException(status_code=500, detail="Erro interno ao consultar status. Tente novamente.")
