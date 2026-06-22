@@ -3,15 +3,15 @@ import { perguntarRAG, indexarRAG, statusRAG, parsearErroAPI } from '../services
 import './ConsultaSection.css';
 
 const SUGESTOES = [
-  'Qual o valor total gasto com insumos agrícolas?',
-  'Quais notas fiscais foram emitidas este ano?',
-  'Qual foi a nota de maior valor e do que se trata?',
-  'Quais parcelas vencem em junho de 2026?',
-  'Liste os fornecedores com mais notas lançadas.',
+  'Qual a nota fiscal com maior valor total?',
+  'Quais parcelas estão vencidas?',
+  'Qual o total gasto por fornecedor?',
+  'Liste as notas do tipo APAGAR em ordem decrescente de valor.',
+  'Quais notas foram emitidas nos últimos 3 meses?',
 ];
 
 export default function ConsultaSection() {
-  const [modo, setModo] = useState('simples');
+  const [modo, setModo] = useState('analitico');
   const [pergunta, setPergunta] = useState('');
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -130,7 +130,7 @@ export default function ConsultaSection() {
           {modo === 'simples'
             ? 'Recuperação por palavras-chave via busca textual no banco'
             : modo === 'analitico'
-            ? 'Analisa o banco completo — ideal para "maior valor", totais, rankings e parcelas vencidas'
+            ? 'Analisa todas as notas ativas do banco — use para comparações, totais, rankings e parcelas vencidas'
             : 'Recuperação semântica por similaridade de cosseno entre vetores'}
         </span>
       </div>
