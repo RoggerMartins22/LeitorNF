@@ -201,12 +201,15 @@ def listar_movimentos(
     tipo: Optional[str] = None,
     numero_nf: Optional[str] = None,
     ativo: Optional[bool] = None,
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
     order_by: str = "criado_em",
     order_dir: str = "desc",
     db: Session = Depends(get_db),
 ):
     movimentos = GestaoRepository(db).listar_movimentos(
         q=q, tipo=tipo, numero_nf=numero_nf, ativo=ativo,
+        data_inicio=data_inicio, data_fim=data_fim,
         order_by=order_by, order_dir=order_dir,
     )
     return [_fmt_mov(m) for m in movimentos]

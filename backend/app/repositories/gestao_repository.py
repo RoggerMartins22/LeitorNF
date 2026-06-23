@@ -124,6 +124,8 @@ class GestaoRepository:
         tipo=None,
         numero_nf=None,
         ativo=None,
+        data_inicio=None,
+        data_fim=None,
         order_by: str = "criado_em",
         order_dir: str = "desc",
     ):
@@ -142,6 +144,12 @@ class GestaoRepository:
 
         if ativo is not None:
             query = query.filter(MovimentoContas.ativo == ativo)
+
+        if data_inicio:
+            query = query.filter(MovimentoContas.data_nf >= data_inicio)
+
+        if data_fim:
+            query = query.filter(MovimentoContas.data_nf <= data_fim)
 
         if order_by not in self._MOV_ALLOWED_ORDER_BY:
             order_by = "criado_em"

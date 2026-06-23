@@ -44,6 +44,25 @@ function formatCurrency(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 }
 
+function formatarData(data) {
+  if (!data) return '—';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    const [ano, mes, dia] = data.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  return data;
+}
+
+function formatarDatetime(dt) {
+  if (!dt) return '—';
+  const datePart = String(dt).split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    const [ano, mes, dia] = datePart.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  return dt;
+}
+
 /* ── Modal ───────────────────────────────────────── */
 
 function Modal({ title, onClose, children, wide }) {
@@ -321,7 +340,7 @@ function PessoasSection({ tipoFiltro }) {
                   <td>{p.nome_fantasia || '—'}</td>
                   <td className="td-mono">{p.cnpj || p.cpf || '—'}</td>
                   <td><Badge ativo={p.ativo} /></td>
-                  <td>{p.criado_em ? new Date(p.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
+                  <td>{p.criado_em ? formatarDatetime(p.criado_em) : '—'}</td>
                   <td>
                     <RowActions ativo={p.ativo} onEdit={() => setModal({ modo: 'editar', dados: p })}
                       onStatus={() => handleStatus(p)} loading={actionId === p.id} />
@@ -650,6 +669,8 @@ function MovimentosSection({ tipoFiltro }) {
   const [filtroTipo, setFiltroTipo] = useState(tipoFiltro || 'TODOS');
   const [numeroNfFilter, setNumeroNfFilter] = useState('');
   const [descFilter, setDescFilter] = useState('');
+  const [dataInicioFilter, setDataInicioFilter] = useState('');
+  const [dataFimFilter, setDataFimFilter] = useState('');
 
   const [colSort, setColSort] = useState('criado_em');
   const [colDir, setColDir] = useState('desc');
@@ -680,6 +701,8 @@ function MovimentosSection({ tipoFiltro }) {
         numero_nf: numeroNfFilter.trim(),
         tipo: tipoParam,
         ativo: statusToAtivo(statusFiltro),
+        data_inicio: dataInicioFilter || undefined,
+        data_fim: dataFimFilter || undefined,
         order_by: sort,
         order_dir: dir,
       });
@@ -713,6 +736,8 @@ function MovimentosSection({ tipoFiltro }) {
     setFiltroTipo(tipoFiltro || 'TODOS');
     setNumeroNfFilter('');
     setDescFilter('');
+    setDataInicioFilter('');
+    setDataFimFilter('');
     setMovimentos([]);
     setLastAction(null);
   };
@@ -810,6 +835,20 @@ function MovimentosSection({ tipoFiltro }) {
           onKeyDown={e => { if (e.key === 'Enter') runBuscar(); }}
           placeholder="Descrição"
         />
+        <input
+          type="date"
+          className="g-filter-input"
+          value={dataInicioFilter}
+          onChange={e => setDataInicioFilter(e.target.value)}
+          title="Data NF — de"
+        />
+        <input
+          type="date"
+          className="g-filter-input"
+          value={dataFimFilter}
+          onChange={e => setDataFimFilter(e.target.value)}
+          title="Data NF — até"
+        />
       </div>
 
       <div className="g-toolbar">
@@ -845,10 +884,10 @@ function MovimentosSection({ tipoFiltro }) {
                     <td className="td-id">#{m.id}</td>
                     <td><Pill variant={m.tipo === 'APAGAR' ? 'red' : 'green'}>{m.tipo === 'APAGAR' ? 'A PAGAR' : 'A RECEBER'}</Pill></td>
                     <td>{m.numero_nf || '—'}</td>
-                    <td>{m.data_nf || '—'}</td>
+                    <td>{formatarData(m.data_nf)}</td>
                     <td className="td-valor">{formatCurrency(m.valor_total)}</td>
                     <td><Badge ativo={m.ativo !== false} /></td>
-                    <td>{m.criado_em ? new Date(m.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
+                    <td>{formatarDatetime(m.criado_em)}</td>
                     <td>
                       <div className="g-row-actions">
                         <button className="g-action g-action-default" onClick={() => verDetalhe(m.id)} title="Ver detalhes">
@@ -904,7 +943,7 @@ function MovimentosSection({ tipoFiltro }) {
                                     <tr key={p.id}>
                                       <td>{p.numero_parcela}ª</td>
                                       <td className="td-valor">{formatCurrency(p.valor)}</td>
-                                      <td>{p.data_vencimento || '—'}</td>
+                                      <td>{formatarData(p.data_vencimento)}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -1105,7 +1144,7 @@ function ParcelasSection() {
                   <td>Mov. #{p.movimento_id}</td>
                   <td>{p.numero_parcela}ª parcela</td>
                   <td className="td-valor">{formatCurrency(p.valor)}</td>
-                  <td>{p.data_vencimento || '—'}</td>
+                  <td>{formatarData(p.data_vencimento)}</td>
                 </tr>
               ))}
             </tbody>
