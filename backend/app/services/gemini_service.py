@@ -60,7 +60,7 @@ def extract_nota_fiscal(pdf_bytes: bytes) -> dict:
     for attempt in range(3):
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=[
                     types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
                     EXTRACTION_PROMPT,
