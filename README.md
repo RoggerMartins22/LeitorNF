@@ -8,7 +8,7 @@ Sistema web para leitura, persistência e consulta inteligente de notas fiscais 
 |---|---|
 | Backend | Python · FastAPI · SQLAlchemy · Pydantic · Uvicorn |
 | Frontend | React (Vite) · Axios |
-| IA | Google Gemini API (`gemini-2.5-flash` · `text-embedding-004`) |
+| IA | Google Gemini API (`gemini-2.0-flash` · `text-embedding-004`) |
 | Banco de dados | PostgreSQL |
 | Containerização | Docker · Docker Compose |
 

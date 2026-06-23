@@ -134,7 +134,7 @@ def _gerar_resposta_gemini(pergunta: str, contexto: str, prompt_template: str = 
     template = prompt_template or _PROMPT_RESPOSTA
     prompt = template.format(pergunta=pergunta, contexto=contexto, data_hoje=data_hoje)
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=prompt,
         config={"temperature": 0},
     )
