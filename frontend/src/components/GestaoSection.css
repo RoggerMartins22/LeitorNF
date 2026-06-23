@@ -276,10 +276,34 @@
 .mov-det-sub   { font-size: 0.78rem; color: var(--text-muted); font-family: 'DM Mono', monospace; }
 .mov-clf-tag   { display: inline-block; padding: 2px 8px; background: var(--primary-surface); color: var(--primary); border-radius: 4px; font-size: 0.76rem; margin: 2px 2px 2px 0; }
 
-.parc-table { border-collapse: collapse; font-size: 0.82rem; }
-.parc-table th { padding: 6px 12px; text-align: left; font-weight: 600; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; background: var(--surface); border-bottom: 1px solid var(--border); }
-.parc-table td { padding: 6px 12px; border-bottom: 1px solid var(--border-light); }
+.parc-detalhe-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.parc-table { border-collapse: collapse; font-size: 0.82rem; width: 100%; }
+.parc-table th { padding: 7px 14px; text-align: left; font-weight: 600; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.parc-table td { padding: 8px 14px; border-bottom: 1px solid var(--border-light); }
 .parc-table tbody tr:last-child td { border-bottom: none; }
+.parc-table tbody tr:hover { background: var(--surface-2); }
+
+.parc-row-vencida td { background: #fff5f5; }
+.parc-row-vencida:hover td { background: #fee2e2 !important; }
+
+.parc-num { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); }
+
+.parc-badge {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+}
+.parc-badge.vencida  { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
+.parc-badge.proxima  { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+.parc-badge.ok       { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+.parc-badge.none     { color: var(--text-muted); }
+
+.parc-total-row td { background: var(--surface-2); border-top: 1.5px solid var(--border); }
+.parc-total-label { font-weight: 700; font-size: 0.82rem; color: var(--text); }
 
 /* ── Loader / Empty ───────────────────────────────── */
 .g-loader {
@@ -415,14 +439,51 @@
 .g-clf-checked { border-color: var(--primary); background: var(--primary-surface); color: var(--primary); font-weight: 600; }
 .g-clf-item input { cursor: pointer; }
 
+/* ── Distribuição automática de parcelas ─────────── */
+.g-dist-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.g-dist-input {
+  padding: 6px 10px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--bg);
+  color: var(--text); font-size: 0.82rem; font-family: inherit;
+}
+.g-dist-input:first-child { width: 72px; }
+
+.g-btn-distribuir {
+  padding: 6px 14px; background: var(--primary); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s; font-family: inherit; white-space: nowrap;
+}
+.g-btn-distribuir:hover:not(:disabled) { background: var(--primary-dark); }
+.g-btn-distribuir:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Linhas de parcela ───────────────────────────── */
 .g-parcela-row {
   display: flex; align-items: flex-end; gap: 10px; margin-bottom: 8px;
 }
 
 .g-parcela-num { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-bottom: 10px; white-space: nowrap; }
 
+/* ── Totalizador de parcelas ─────────────────────── */
+.g-parc-total {
+  font-size: 0.8rem; color: var(--text-secondary);
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  margin-bottom: 8px; margin-top: 2px;
+  background: var(--surface-2); border: 1px solid var(--border-light);
+}
+.g-parc-total.ok      { background: var(--success-bg); border-color: var(--success-border); color: var(--success); }
+.g-parc-total.diverge { background: var(--warning-bg); border-color: var(--warning-border); color: var(--warning); }
+.g-parc-diff { margin-left: 4px; }
+.g-parc-ok   { margin-left: 4px; }
+
 .g-btn-add-parc {
-  margin-top: 8px; padding: 7px 14px;
+  margin-top: 4px; padding: 7px 14px;
   background: var(--bg); border: 1.5px dashed var(--border);
   border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-muted);
   cursor: pointer; transition: all 0.15s; width: 100%; font-family: inherit;

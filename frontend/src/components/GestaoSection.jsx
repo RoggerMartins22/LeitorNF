@@ -63,6 +63,25 @@ function formatarDatetime(dt) {
   return dt;
 }
 
+function statusParcela(dataVencimento) {
+  if (!dataVencimento) return null;
+  let date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataVencimento)) {
+    date = new Date(dataVencimento + 'T12:00:00');
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dataVencimento)) {
+    const [d, m, y] = dataVencimento.split('/');
+    date = new Date(`${y}-${m}-${d}T12:00:00`);
+  } else {
+    return null;
+  }
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const diffDias = Math.round((date - today) / (1000 * 60 * 60 * 24));
+  if (diffDias < 0) return 'vencida';
+  if (diffDias <= 7) return 'proxima';
+  return 'ok';
+}
+
 /* ── Modal ───────────────────────────────────────── */
 
 function Modal({ title, onClose, children, wide }) {
@@ -934,19 +953,45 @@ function MovimentosSection({ tipoFiltro }) {
                             </div>
                           )}
                           {detalhe.parcelas?.length > 0 && (
-                            <div>
-                              <div className="mov-det-label" style={{marginBottom:8}}>Parcelas ({detalhe.parcelas.length})</div>
+                            <div className="parc-detalhe-wrap">
+                              <div className="mov-det-label" style={{marginBottom:8}}>
+                                Parcelas ({detalhe.parcelas.length})
+                              </div>
                               <table className="parc-table">
-                                <thead><tr><th>Parcela</th><th>Valor</th><th>Vencimento</th></tr></thead>
+                                <thead>
+                                  <tr>
+                                    <th>#</th>
+                                    <th>Valor</th>
+                                    <th>Vencimento</th>
+                                    <th>Status</th>
+                                  </tr>
+                                </thead>
                                 <tbody>
-                                  {detalhe.parcelas.map(p => (
-                                    <tr key={p.id}>
-                                      <td>{p.numero_parcela}ª</td>
-                                      <td className="td-valor">{formatCurrency(p.valor)}</td>
-                                      <td>{formatarData(p.data_vencimento)}</td>
-                                    </tr>
-                                  ))}
+                                  {detalhe.parcelas.map(p => {
+                                    const st = statusParcela(p.data_vencimento);
+                                    return (
+                                      <tr key={p.id} className={st === 'vencida' ? 'parc-row-vencida' : ''}>
+                                        <td className="parc-num">{p.numero_parcela}ª</td>
+                                        <td className="td-valor">{formatCurrency(p.valor)}</td>
+                                        <td>{formatarData(p.data_vencimento)}</td>
+                                        <td>
+                                          {st === 'vencida' && <span className="parc-badge vencida">Vencida</span>}
+                                          {st === 'proxima' && <span className="parc-badge proxima">A vencer</span>}
+                                          {st === 'ok' && <span className="parc-badge ok">Em dia</span>}
+                                          {!st && <span className="parc-badge none">—</span>}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
                                 </tbody>
+                                <tfoot>
+                                  <tr className="parc-total-row">
+                                    <td colSpan={2} className="td-valor parc-total-label">
+                                      Total: {formatCurrency(detalhe.parcelas.reduce((s, p) => s + (p.valor || 0), 0))}
+                                    </td>
+                                    <td colSpan={2} />
+                                  </tr>
+                                </tfoot>
                               </table>
                             </div>
                           )}
@@ -980,7 +1025,24 @@ function ModalMovimento({ modo, dados, pessoas, classificacoes, tipoFixo, onClos
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [loadingDet, setLoadingDet] = useState(false);
+  const [distQtd, setDistQtd] = useState('');
+  const [distDataInicio, setDistDataInicio] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleDistribuir = () => {
+    const n = parseInt(distQtd);
+    const valorTotal = parseFloat(form.valor_total);
+    if (!n || n < 1 || !valorTotal) return;
+    const valorUnit = valorTotal / n;
+    const base = distDataInicio ? new Date(distDataInicio + 'T12:00:00') : new Date();
+    const parcelas = Array.from({ length: n }, (_, i) => {
+      const d = new Date(base);
+      d.setMonth(d.getMonth() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return { valor: valorUnit.toFixed(2), data_vencimento: iso };
+    });
+    setForm(f => ({ ...f, parcelas }));
+  };
 
   useEffect(() => {
     if (modo === 'editar' && dados.id) {
@@ -1089,6 +1151,35 @@ function ModalMovimento({ modo, dados, pessoas, classificacoes, tipoFixo, onClos
 
           <div className="g-form-section">
             <div className="g-form-section-title">Parcelas</div>
+
+            {/* Distribuição automática */}
+            <div className="g-dist-bar">
+              <input
+                type="number" min="1" max="60"
+                className="g-dist-input"
+                value={distQtd}
+                onChange={e => setDistQtd(e.target.value)}
+                placeholder="Qtd."
+              />
+              <input
+                type="date"
+                className="g-dist-input"
+                value={distDataInicio}
+                onChange={e => setDistDataInicio(e.target.value)}
+                title="Data do 1º vencimento"
+              />
+              <button
+                type="button"
+                className="g-btn-distribuir"
+                onClick={handleDistribuir}
+                disabled={!distQtd || !form.valor_total}
+                title="Distribui o valor total em parcelas mensais iguais"
+              >
+                Distribuir
+              </button>
+            </div>
+
+            {/* Linhas de parcela */}
             {form.parcelas.map((p, i) => (
               <div key={i} className="g-parcela-row">
                 <span className="g-parcela-num">{i + 1}ª</span>
@@ -1098,7 +1189,7 @@ function ModalMovimento({ modo, dados, pessoas, classificacoes, tipoFixo, onClos
                 </div>
                 <div className="g-form-group" style={{flex:1}}>
                   <label>Vencimento</label>
-                  <input value={p.data_vencimento} onChange={e => setParcela(i, 'data_vencimento', e.target.value)} placeholder="DD/MM/AAAA" />
+                  <input type="date" value={p.data_vencimento} onChange={e => setParcela(i, 'data_vencimento', e.target.value)} />
                 </div>
                 {form.parcelas.length > 1 && (
                   <button className="g-btn-remove-parc" onClick={() => removeParcela(i)} title="Remover">
@@ -1107,6 +1198,24 @@ function ModalMovimento({ modo, dados, pessoas, classificacoes, tipoFixo, onClos
                 )}
               </div>
             ))}
+
+            {/* Totalizador */}
+            {(() => {
+              const totalParc = form.parcelas.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+              const totalNF = parseFloat(form.valor_total) || 0;
+              const diff = Math.abs(totalParc - totalNF);
+              const ok = totalNF > 0 && diff < 0.01;
+              return (
+                <div className={`g-parc-total ${ok ? 'ok' : totalNF > 0 ? 'diverge' : ''}`}>
+                  Total das parcelas: <strong>{formatCurrency(totalParc)}</strong>
+                  {totalNF > 0 && !ok && (
+                    <span className="g-parc-diff"> · diferença de {formatCurrency(diff)} em relação ao valor total</span>
+                  )}
+                  {ok && <span className="g-parc-ok"> ✓ bate com o valor total</span>}
+                </div>
+              );
+            })()}
+
             <button className="g-btn-add-parc" onClick={addParcela}>+ Adicionar Parcela</button>
           </div>
 
